@@ -4,6 +4,8 @@ import nacl.hash
 HASHER = nacl.hash.sha256
 
 
+# TODO: Test
+
 class MerkleTree(object):
     top_node = None
     foundation = []
