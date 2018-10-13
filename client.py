@@ -1,3 +1,5 @@
+import time
+
 import nacl.signing
 import nacl.encoding
 import nacl.secret
@@ -69,6 +71,10 @@ class Client(object):
         signed = self._sign_data(encrypted)
         send_message(socket, signed)
 
+    def receive_data(self):
+        # TODO: Receive file data and hashes
+        pass
+
     def _sign_data(self, data):
         signed = self.signing_key.sign(data)
         return signed
@@ -85,7 +91,12 @@ class Client(object):
             return None
         return encrypted
 
+    def _decrypt_data(self, data):
+        plaintext = self._secret_box.decrypt(data)
+        return plaintext
+
 
 client = Client()
 client.connect_to_host('127.0.0.1', 12317)
+time.sleep(0.5)
 client.setup_secure_channel()

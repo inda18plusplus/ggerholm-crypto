@@ -1,43 +1,19 @@
-from multiprocessing import Process
+from file import File
+from merkle import MerkleTree
 
-from client import Client
-from server import Server
+tree = MerkleTree(16)
 
-server = Server()
-client = Client()
+f2= File(0, 'Det här är fil nr 1!')
+f4 = File(1, 'Det här är fil nr 2!')
+f3 = File(2, 'Det här är fil nr 3!')
+f1 = File(3, 'Det här är fil nr 4!')
 
+tree.add_file(f1)
+print(tree.top_node)
+tree.add_file(f2)
+print(tree.top_node)
+tree.add_file(f3)
+print(tree.top_node)
+tree.add_file(f4)
+print(tree.top_node)
 
-def setup_server():
-    server.accept_connection()
-
-
-def setup_client():
-    client.connect_to_host(*server.get_host())
-
-
-def server_secure_channel():
-    server.setup_secure_channel()
-
-
-def client_secure_channel():
-    client.setup_secure_channel()
-
-
-if __name__ == '__main__':
-    p1 = Process(target=setup_server)
-    p1.start()
-    p2 = Process(target=setup_client)
-    p2.start()
-
-    p1.join()
-    p2.join()
-
-    p1 = Process(target=server_secure_channel)
-    p1.start()
-    p2 = Process(target=client_secure_channel)
-    p2.start()
-
-    p1.join()
-    p2.join()
-
-    print('Main complete.')

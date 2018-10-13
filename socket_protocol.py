@@ -5,6 +5,7 @@ from nacl.public import PrivateKey
 
 
 def pack_data(data):
+    # Length first in network byte order.
     return struct.pack('>I', len(data)) + data
 
 

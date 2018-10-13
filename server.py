@@ -6,6 +6,8 @@ import socket
 from nacl.exceptions import BadSignatureError
 from nacl.public import Box
 
+from file import File
+from merkle import MerkleTree
 from socket_protocol import receive_message, generate_keys, generate_signing_keys, send_message
 
 
@@ -22,6 +24,8 @@ class Server(object):
         self.server_socket.bind((self.address, self.port))
 
         self.signing_key, self.verify_key, self.verify_key_hex = generate_signing_keys()
+
+        self.merkle_tree = MerkleTree(16)
 
     def accept_connection(self):
         self.server_socket.listen(5)
@@ -65,6 +69,21 @@ class Server(object):
         # Setup symmetric encryption using the secret key
         self._secret_box = nacl.secret.SecretBox(secret_key)
 
+    def send_file(self, file_id):
+        file_data = next((file.data for file in self.files if file.file_id == file_id), default=None)
+        if not file_data:
+            return
+
+        hashes = self.merkle_tree.foundation
+        hashes[file_id] = None
+
+        encrypted_data = self._encrypt_data(file_data)
+        if not encrypted_data:
+            return
+        signed_data = self._sign_data(encrypted_data)
+        send_message(self._client_socket, signed_data)
+        # TODO: Send hashes
+
     def receive_file(self):
         data = receive_message(self._client_socket)
         if not data:
@@ -77,7 +96,9 @@ class Server(object):
         if not plaintext:
             return
 
-        self.files.append((plaintext.file_id, plaintext.data))
+        file = File(plaintext.file_id, plaintext.data)
+        self.merkle_tree.add_file(file)
+        self.files.append(file)
 
     def _sign_data(self, data):
         signed = self.signing_key.sign(data)
@@ -88,6 +109,12 @@ class Server(object):
             return self._client_verify_key.verify(data)
         except BadSignatureError:
             return None
+
+    def _encrypt_data(self, data):
+        encrypted = self._secret_box.encrypt(data)
+        if len(encrypted) != len(data) + self._secret_box.NONCE_SIZE + self._secret_box.MACBYTES:
+            return None
+        return encrypted
 
     def _decrypt_data(self, data):
         plaintext = self._secret_box.decrypt(data)
