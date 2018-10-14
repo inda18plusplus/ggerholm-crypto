@@ -3,13 +3,13 @@ import socket
 import time
 from threading import Thread
 
-import nacl.encoding
-import nacl.secret
-import nacl.signing
-import nacl.utils
-from nacl.public import Box
+from nacl.encoding import HexEncoder
+from nacl.public import Box, PublicKey
+from nacl.secret import SecretBox
+from nacl.signing import VerifyKey
+from nacl.utils import random
 
-from file import file_from_json, file_to_json, File
+from file import file_from_json, file_to_json
 from merkle import MerkleTree
 from socket_protocol import receive_message, generate_keys, generate_signing_keys, send_message, ConnectionManager
 
@@ -54,7 +54,7 @@ class Server(ConnectionManager):
         client_key_hex = receive_message(self.socket)
         if not client_key_hex:
             return False
-        self._connection_verify_key = nacl.signing.VerifyKey(client_key_hex, encoder=nacl.encoding.HexEncoder)
+        self._connection_verify_key = VerifyKey(client_key_hex, encoder=HexEncoder)
 
         # Send our verification hex
         send_message(self.socket, self.verify_key_hex)
@@ -63,7 +63,7 @@ class Server(ConnectionManager):
     def setup_secure_channel(self):
         # Generate our private / public key pair
         private_key, public_key = generate_keys()
-        public_key = public_key.encode(encoder=nacl.encoding.HexEncoder)
+        public_key = public_key.encode(encoder=HexEncoder)
         print('Server: Keys generated.')
 
         # Receive the client's public key
@@ -71,7 +71,7 @@ class Server(ConnectionManager):
         client_public_key = self._verify_sender(client_public_key)
         if not client_public_key:
             return False
-        client_public_key = nacl.public.PublicKey(client_public_key, encoder=nacl.encoding.HexEncoder)
+        client_public_key = PublicKey(client_public_key, encoder=HexEncoder)
         print('Server: Client public key received.')
 
         # Send our public key to the client
@@ -80,7 +80,7 @@ class Server(ConnectionManager):
 
         # Create a secret key and send it to the client
         box = Box(private_key, client_public_key)
-        secret_key = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
+        secret_key = random(SecretBox.KEY_SIZE)
         encrypted = box.encrypt(secret_key)
         send_message(self.socket, self._sign_data(encrypted))
         print('Server: Secret key sent.')
