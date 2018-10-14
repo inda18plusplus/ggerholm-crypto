@@ -1,4 +1,3 @@
-import json
 import socket
 import time
 from threading import Thread
@@ -10,7 +9,7 @@ from nacl.signing import VerifyKey
 from nacl.utils import random
 
 from file import file_from_json, file_to_json
-from merkle import MerkleTree
+from merkle import MerkleTree, node_to_json
 from socket_protocol import receive_message, generate_keys, generate_signing_keys, send_message, ConnectionManager
 
 
@@ -94,13 +93,12 @@ class Server(ConnectionManager):
         if not file:
             return False
 
-        hashes = list(map(lambda n: None if not n else n.node_hash.decode('utf-8'), self.merkle_tree.foundation))
-        hashes[file_id] = None
+        hash_structure = self.merkle_tree.get_structure_with_file(file_id)
 
         file_json = file_to_json(file)
         self.send_bytes(bytes(file_json, encoding='utf-8'))
-        hash_json = json.dumps(hashes)
-        self.send_bytes(bytes(hash_json, encoding='utf-8'))
+        structure_json = node_to_json(hash_structure)
+        self.send_bytes(bytes(structure_json, encoding='utf-8'))
         return True
 
     def receive_file(self):

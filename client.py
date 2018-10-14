@@ -1,4 +1,3 @@
-import json
 import socket
 import time
 from threading import Thread
@@ -10,7 +9,7 @@ from nacl.encoding import HexEncoder
 from nacl.public import Box, PublicKey
 
 from file import File, file_from_json, file_to_json
-from merkle import MerkleTree
+from merkle import verify_top_hash
 from socket_protocol import send_message, receive_message, generate_keys, ConnectionManager
 
 
@@ -104,12 +103,10 @@ class Client(ConnectionManager):
         if not file_json:
             return None
         file = file_from_json(file_json.decode('utf-8'))
-        hash_json = self.receive_bytes()
-        hashes = json.loads(hash_json.decode('utf-8'))
-
-        merkle_tree = MerkleTree(foundation=hashes)
-        merkle_tree.add_file(file)
-        if not merkle_tree.top_node.node_hash == self._latest_top_hash:
+        hash_structure = self.receive_bytes()
+        if not hash_structure:
+            return None
+        if not verify_top_hash(hash_structure, self._latest_top_hash):
             return None
 
         return file
