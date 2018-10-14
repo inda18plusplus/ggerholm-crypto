@@ -32,8 +32,11 @@ class Client(ConnectionManager):
         self.setup_secure_channel()
         self.send_bytes(bytes('Hej jag är hemlig data.', encoding='utf-8'))
 
-        file = File(0, 'Secret file #1')
-        self.send_file(file)
+        self.send_file(File(0, 'Secret file #0'))
+        self.send_file(File(5, 'Secret file #5'))
+        print('Client: Received ', self.receive_file().__dict__)
+        time.sleep(0.5)
+        self.send_file(File(2, 'Secret file #2'))
         print('Client: Received ', self.receive_file().__dict__)
 
     def connect_to_host(self, host, port):

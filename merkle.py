@@ -8,11 +8,15 @@ HASHER = sha256
 
 class MerkleTree(object):
     top_node = None
-    foundation = []
 
     def __init__(self, foundation_length=16, foundation=None):
+        self.foundation = []
         if foundation:
-            self.foundation = foundation
+            for n in foundation:
+                if not n:
+                    self.foundation.append(None)
+                else:
+                    self.foundation.append(TreeNode(None, None, bytes(n, encoding='utf-8')))
             self.build()
         else:
             for i in range(0, foundation_length):

@@ -38,6 +38,10 @@ class Server(ConnectionManager):
         self.setup_secure_channel()
         print('Server: Received "', self.receive_bytes().decode('utf-8'), '"', sep='')
         self.receive_file()
+        self.receive_file()
+        time.sleep(0.5)
+        self.send_file(5)
+        self.receive_file()
         time.sleep(0.5)
         self.send_file(0)
 
@@ -86,11 +90,11 @@ class Server(ConnectionManager):
         return True
 
     def send_file(self, file_id):
-        file = next(file for file in self.files if file.file_id == file_id)
+        file = next((file for file in self.files if file.file_id == file_id), None)
         if not file:
             return False
 
-        hashes = self.merkle_tree.foundation
+        hashes = list(map(lambda n: None if not n else n.node_hash.decode('utf-8'), self.merkle_tree.foundation))
         hashes[file_id] = None
 
         file_json = file_to_json(file)
