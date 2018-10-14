@@ -1,23 +1,24 @@
-import nacl.signing
+import json
+import socket
+import time
+from threading import Thread
+
 import nacl.encoding
 import nacl.secret
+import nacl.signing
 import nacl.utils
-import socket
-from nacl.exceptions import BadSignatureError
 from nacl.public import Box
 
-from file import File
+from file import file_from_json, file_to_json, File
 from merkle import MerkleTree
-from socket_protocol import receive_message, generate_keys, generate_signing_keys, send_message
+from socket_protocol import receive_message, generate_keys, generate_signing_keys, send_message, ConnectionManager
 
 
-class Server(object):
+class Server(ConnectionManager):
     files = []
-    _secret_box = None
-    _client_verify_key = None
-    _client_socket = None
 
     def __init__(self):
+        super().__init__()
         self.address = '127.0.0.1'
         self.port = 12317
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -27,19 +28,32 @@ class Server(object):
 
         self.merkle_tree = MerkleTree(16)
 
+    def start(self):
+        t = Thread(target=self.run)
+        t.start()
+
+    def run(self):
+        self.accept_connection()
+        self.setup_secure_channel()
+        print('Server: Received "', self.receive_bytes().decode('utf-8'), '"', sep='')
+        self.receive_file()
+        time.sleep(0.5)
+        self.send_file(0)
+
     def accept_connection(self):
         self.server_socket.listen(5)
-        self._client_socket, address = self.server_socket.accept()
+        self.socket, address = self.server_socket.accept()
         print('Server: Client connected from', address)
 
         # Receive the client's verification hex
-        client_key_hex = receive_message(self._client_socket)
+        client_key_hex = receive_message(self.socket)
         if not client_key_hex:
-            return
-        self._client_verify_key = nacl.signing.VerifyKey(client_key_hex, encoder=nacl.encoding.HexEncoder)
+            return False
+        self._connection_verify_key = nacl.signing.VerifyKey(client_key_hex, encoder=nacl.encoding.HexEncoder)
 
         # Send our verification hex
-        send_message(self._client_socket, self.verify_key_hex)
+        send_message(self.socket, self.verify_key_hex)
+        return True
 
     def setup_secure_channel(self):
         # Generate our private / public key pair
@@ -48,82 +62,56 @@ class Server(object):
         print('Server: Keys generated.')
 
         # Receive the client's public key
-        client_public_key = receive_message(self._client_socket)
+        client_public_key = receive_message(self.socket)
         client_public_key = self._verify_sender(client_public_key)
         if not client_public_key:
-            return
+            return False
         client_public_key = nacl.public.PublicKey(client_public_key, encoder=nacl.encoding.HexEncoder)
         print('Server: Client public key received.')
 
         # Send our public key to the client
-        send_message(self._client_socket, self._sign_data(public_key))
+        send_message(self.socket, self._sign_data(public_key))
         print('Server: Public key sent.')
 
         # Create a secret key and send it to the client
         box = Box(private_key, client_public_key)
         secret_key = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
         encrypted = box.encrypt(secret_key)
-        send_message(self._client_socket, self._sign_data(encrypted))
+        send_message(self.socket, self._sign_data(encrypted))
         print('Server: Secret key sent.')
 
         # Setup symmetric encryption using the secret key
-        self._secret_box = nacl.secret.SecretBox(secret_key)
+        self._set_secret_key(secret_key)
+        return True
 
     def send_file(self, file_id):
-        file_data = next((file.data for file in self.files if file.file_id == file_id), default=None)
-        if not file_data:
-            return
+        file = next(file for file in self.files if file.file_id == file_id)
+        if not file:
+            return False
 
         hashes = self.merkle_tree.foundation
         hashes[file_id] = None
 
-        encrypted_data = self._encrypt_data(file_data)
-        if not encrypted_data:
-            return
-        signed_data = self._sign_data(encrypted_data)
-        send_message(self._client_socket, signed_data)
-        # TODO: Send hashes
+        file_json = file_to_json(file)
+        self.send_bytes(bytes(file_json, encoding='utf-8'))
+        hash_json = json.dumps(hashes)
+        self.send_bytes(bytes(hash_json, encoding='utf-8'))
+        return True
 
     def receive_file(self):
-        data = receive_message(self._client_socket)
-        if not data:
-            return
+        file_json = self.receive_bytes()
+        if not file_json:
+            return False
 
-        file = self._verify_sender(data)
-        if not file:
-            return
-        plaintext = self._decrypt_data(file)
-        if not plaintext:
-            return
-
-        file = File(plaintext.file_id, plaintext.data)
+        file = file_from_json(file_json.decode('utf-8'))
         self.merkle_tree.add_file(file)
         self.files.append(file)
 
-    def _sign_data(self, data):
-        signed = self.signing_key.sign(data)
-        return signed
+        print('Server: Received ', file.__dict__)
 
-    def _verify_sender(self, data):
-        try:
-            return self._client_verify_key.verify(data)
-        except BadSignatureError:
-            return None
-
-    def _encrypt_data(self, data):
-        encrypted = self._secret_box.encrypt(data)
-        if len(encrypted) != len(data) + self._secret_box.NONCE_SIZE + self._secret_box.MACBYTES:
-            return None
-        return encrypted
-
-    def _decrypt_data(self, data):
-        plaintext = self._secret_box.decrypt(data)
-        return plaintext
+        top_hash = self.merkle_tree.top_node.node_hash
+        self.send_bytes(top_hash)
+        return True
 
     def get_host(self):
         return self.address, self.port
-
-
-server = Server()
-server.accept_connection()
-server.setup_secure_channel()

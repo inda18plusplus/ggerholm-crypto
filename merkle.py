@@ -1,7 +1,7 @@
-import nacl.encoding
-import nacl.hash
+from nacl.encoding import HexEncoder
+from nacl.hash import sha256
 
-HASHER = nacl.hash.sha256
+HASHER = sha256
 
 
 # TODO: Test
@@ -19,26 +19,26 @@ class MerkleTree(object):
                 self.foundation.append(None)
 
     def add_file(self, file):
-        node = TreeNode(None, None, HASHER(bytes(file.data, encoding='utf-8'), encoder=nacl.encoding.HexEncoder))
+        node = TreeNode(None, None, HASHER(bytes(file.data, encoding='utf-8'), encoder=HexEncoder))
         self.foundation[file.file_id] = node
         self.build()
 
     def build(self):
         nodes = list(filter(None, self.foundation.copy()))
-        structure = []
+        next_level = []
 
         while len(nodes) > 1:
             for i in range(0, len(nodes), 2):
                 if i == len(nodes) - 1:
-                    structure.append(nodes[i])
+                    next_level.append(nodes[i])
                     break
 
                 left = nodes[i]
                 right = nodes[i + 1]
                 node = TreeNode(left, right)
-                structure.append(node)
-            nodes = structure.copy()
-            structure = []
+                next_level.append(node)
+            nodes = next_level.copy()
+            next_level = []
 
         self.top_node = nodes[0] if len(nodes) > 0 else None
 
@@ -52,7 +52,7 @@ class TreeNode(object):
         self.left_child = left_child
         self.right_child = right_child
         if left_child and right_child:
-            self.node_hash = HASHER(left_child.node_hash + right_child.node_hash, encoder=nacl.encoding.HexEncoder)
+            self.node_hash = HASHER(left_child.node_hash + right_child.node_hash, encoder=HexEncoder)
         else:
             self.node_hash = node_hash
 
