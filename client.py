@@ -21,6 +21,7 @@ class Client(ConnectionManager):
         super().__init__()
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+    # TODO: Remove temporary threading solution
     def start(self):
         t = Thread(target=self.run)
         t.start()

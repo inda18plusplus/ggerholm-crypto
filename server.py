@@ -28,6 +28,7 @@ class Server(ConnectionManager):
 
         self.merkle_tree = MerkleTree(16)
 
+    # TODO: Remove temporary threading solution
     def start(self):
         t = Thread(target=self.run)
         t.start()
