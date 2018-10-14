@@ -20,6 +20,14 @@ def node_to_json(node):
 
 
 def verify_top_hash(structure_json, file, top_hash):
+    """
+    Verifies that the provided structure coupled with the provided file
+    actually creates the provided root hash when calculated.
+    :param structure_json: The structure of a minimal tree in JSON.
+    :param file: The file whose hash is to be used.
+    :param top_hash: The wanted root hash.
+    :return: True or False.
+    """
     server_structure = node_from_json(structure_json)
 
     tree = MerkleTree()
@@ -38,34 +46,52 @@ class MerkleTree(object):
             self.foundation.append(TreeNode())
 
     def add_file(self, file):
+        """
+        Adds a file hash to the tree's foundation.
+        The file id decides the position of the leaf node.
+        :param file: A File-object with a valid ID.
+        """
         node = TreeNode(None, None, bytes(file.data, encoding='utf-8'))
         self.foundation[file.file_id] = node
         self.build()
 
     def get_structure_with_file(self, file, clear_file_hash=False):
-        k, m = 2, 0
+        """
+        Creates a tree structure with only the nodes that are required for the provided file to be
+        verifiable.
+        :param file: The file whose hash has to be included in the tree.
+        :param clear_file_hash: If the file hash should be cleared out.
+        :return: The top node of the newly created tree.
+        """
+        level, left_margin = 2, 0
         length = len(self.foundation)
         real_node = self.top_node
         node = TreeNode()
         root_node = node
-        while k <= length:
+        while level <= length:
             node.node_hash = None
             node.left_child = copy.deepcopy(real_node.left_child)
             node.right_child = copy.deepcopy(real_node.right_child)
 
-            if file.file_id >= m + length / k:
+            # Because the tree is binary and the file id corresponds to its leaf node's position
+            # it can be decided whether the leaf node is to the left or right by dividing
+            # the total amount of leaf nodes by the current level and comparing the values.
+            if file.file_id >= left_margin + length / level:
                 node.left_child = TreeNode()
                 node.left_child.node_hash = real_node.left_child.node_hash
                 node = node.right_child
                 real_node = real_node.right_child
-                m += length / k
+                # If the leaf node is to the right then half of the tree downwards is to the left,
+                # which has to be accounted for during the above comparison.
+                left_margin += length / level
             else:
                 node.right_child = TreeNode()
                 node.right_child.node_hash = real_node.right_child.node_hash
                 node = node.left_child
                 real_node = real_node.left_child
 
-            k *= 2
+            # Each step splits the tree in half
+            level *= 2
 
         if clear_file_hash:
             node.node_hash = None
@@ -75,6 +101,9 @@ class MerkleTree(object):
         return root_node
 
     def build(self):
+        """
+        Builds the tree from the bottom up.
+        """
         nodes = self.foundation.copy()
         next_level = []
 
@@ -109,6 +138,10 @@ class TreeNode(object):
             self.fix_hash()
 
     def fix_hash(self):
+        """
+        Calculates this node's hash based on its children's hashes.
+        Does nothing if the node's hash is not empty.
+        """
         if not self.is_empty():
             return
 
@@ -123,6 +156,7 @@ class TreeNode(object):
                 combined_hash += self.right_child.node_hash
 
         if combined_hash != b'':
+            # A node with only one valid child hashes that hash again.
             self.node_hash = HASHER(combined_hash, encoder=HexEncoder)
 
     def is_empty(self):
