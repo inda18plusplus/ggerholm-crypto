@@ -63,27 +63,27 @@ class MerkleTree(object):
         :param clear_file_hash: If the file hash should be cleared out.
         :return: The top node of the newly created tree.
         """
-        level, left_margin = 2, 0
-        length = len(self.foundation)
+        left_margin = 0
+        width = len(self.foundation)
         real_node = self.top_node
         node = TreeNode()
         root_node = node
-        while level <= length:
+        while width > 1:
             node.node_hash = None
             node.left_child = copy.deepcopy(real_node.left_child)
             node.right_child = copy.deepcopy(real_node.right_child)
 
-            # Because the tree is binary and the file id corresponds to its leaf node's position
-            # it can be decided whether the leaf node is to the left or right by dividing
-            # the total amount of leaf nodes by the current level and comparing the values.
-            if file.file_id >= left_margin + length / level:
+            # Because the tree is binary and the file ID corresponds to its leaf node's position
+            # it can be decided whether the leaf node is to the left or right by comparing
+            # the file ID with the remaining tree width.
+            if file.file_id >= left_margin + width / 2:
                 node.left_child = TreeNode()
                 node.left_child.node_hash = real_node.left_child.node_hash
                 node = node.right_child
                 real_node = real_node.right_child
                 # If the leaf node is to the right then half of the tree downwards is to the left,
                 # which has to be accounted for during the above comparison.
-                left_margin += length / level
+                left_margin += width / 2
             else:
                 node.right_child = TreeNode()
                 node.right_child.node_hash = real_node.right_child.node_hash
@@ -91,7 +91,7 @@ class MerkleTree(object):
                 real_node = real_node.left_child
 
             # Each step splits the tree in half
-            level *= 2
+            width /= 2
 
         if clear_file_hash:
             node.node_hash = None
