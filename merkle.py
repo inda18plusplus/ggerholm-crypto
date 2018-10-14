@@ -19,10 +19,14 @@ def node_to_json(node):
     return json.dumps(node.flatten())
 
 
-def verify_top_hash(structure_json, top_hash):
-    root_node = node_from_json(structure_json)
-    root_node.fix_hash()
-    return root_node.node_hash == top_hash
+def verify_top_hash(structure_json, file, top_hash):
+    server_structure = node_from_json(structure_json)
+
+    tree = MerkleTree()
+    tree.top_node = server_structure
+    custom = tree.get_structure_with_file(file, False)
+    custom.fix_hash()
+    return custom.node_hash == top_hash
 
 
 class MerkleTree(object):
@@ -38,7 +42,7 @@ class MerkleTree(object):
         self.foundation[file.file_id] = node
         self.build()
 
-    def get_structure_with_file(self, file_id):
+    def get_structure_with_file(self, file, clear_file_hash=False):
         k, m = 2, 0
         length = len(self.foundation)
         real_node = self.top_node
@@ -49,7 +53,7 @@ class MerkleTree(object):
             node.left_child = copy.deepcopy(real_node.left_child)
             node.right_child = copy.deepcopy(real_node.right_child)
 
-            if file_id >= m + length / k:
+            if file.file_id >= m + length / k:
                 node.left_child = TreeNode()
                 node.left_child.node_hash = real_node.left_child.node_hash
                 node = node.right_child
@@ -62,6 +66,11 @@ class MerkleTree(object):
                 real_node = real_node.left_child
 
             k *= 2
+
+        if clear_file_hash:
+            node.node_hash = None
+        else:
+            node.node_hash = HASHER(bytes(file.data, encoding='utf-8'))
 
         return root_node
 
@@ -90,12 +99,12 @@ class TreeNode(object):
     right_child = None
     node_hash = None
 
-    def __init__(self, left_child: 'TreeNode' = None, right_child: 'TreeNode' = None, node_hash: bytes = None):
+    def __init__(self, left_child: 'TreeNode' = None, right_child: 'TreeNode' = None, node_data: bytes = None):
         super().__init__()
         self.left_child = left_child
         self.right_child = right_child
-        if node_hash:
-            self.node_hash = HASHER(node_hash)
+        if node_data:
+            self.node_hash = HASHER(node_data)
         else:
             self.fix_hash()
 
@@ -128,6 +137,11 @@ class TreeNode(object):
 
     def __str__(self):
         return str(self.node_hash)
+
+    def __eq__(self, other):
+        if other and isinstance(other, TreeNode):
+            return self.node_hash == other.node_hash and self.left_child == other.left_child and self.right_child == other.right_child
+        return super().__eq__(other)
 
     @classmethod
     def from_dictionary(cls, dictionary):

@@ -93,7 +93,7 @@ class Server(ConnectionManager):
         if not file:
             return False
 
-        hash_structure = self.merkle_tree.get_structure_with_file(file_id)
+        hash_structure = self.merkle_tree.get_structure_with_file(file, True)
 
         file_json = file_to_json(file)
         self.send_bytes(bytes(file_json, encoding='utf-8'))

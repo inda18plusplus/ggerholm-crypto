@@ -106,7 +106,7 @@ class Client(ConnectionManager):
         hash_structure = self.receive_bytes()
         if not hash_structure:
             return None
-        if not verify_top_hash(hash_structure, self._latest_top_hash):
+        if not verify_top_hash(hash_structure, file, self._latest_top_hash):
             return None
 
         return file
