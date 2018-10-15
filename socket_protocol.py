@@ -12,10 +12,10 @@ def pack_data(data):
     return struct.pack('>I', len(data)) + data
 
 
-def receive_bytes(socket, n):
+def receive_bytes(socket, length):
     data = b''
-    while len(data) < n:
-        packet = socket.recv(n - len(data))
+    while len(data) < length:
+        packet = socket.recv(length - len(data))
         if not packet:
             return None
         data += packet
@@ -59,7 +59,7 @@ class ConnectionManager(object):
     def _set_secret_key(self, key):
         self._secret_box = SecretBox(key)
 
-    def send_bytes(self, data):
+    def send_bytes(self, data: bytes):
         """
         Encrypts and signs the provided data then sends it to the connected device.
         :param data: The data (as a bytes-object) to be sent.
@@ -87,22 +87,22 @@ class ConnectionManager(object):
         decrypted = self._decrypt_data(encrypted)
         return decrypted
 
-    def _sign_data(self, data):
+    def _sign_data(self, data: bytes):
         signed = self.signing_key.sign(data)
         return signed
 
-    def _verify_sender(self, data):
+    def _verify_sender(self, data: bytes):
         try:
             return self._connection_verify_key.verify(data)
         except BadSignatureError:
             return None
 
-    def _encrypt_data(self, data):
+    def _encrypt_data(self, data: bytes):
         encrypted = self._secret_box.encrypt(data)
         if len(encrypted) != len(data) + self._secret_box.NONCE_SIZE + self._secret_box.MACBYTES:
             return None
         return encrypted
 
-    def _decrypt_data(self, data):
+    def _decrypt_data(self, data: bytes):
         decrypted = self._secret_box.decrypt(data)
         return decrypted

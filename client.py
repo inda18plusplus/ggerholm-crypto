@@ -86,15 +86,11 @@ class Client(ConnectionManager):
     def send_file(self, file):
         file_json = file_to_json(file)
         self.send_bytes(bytes(file_json, encoding='utf-8'))
-        top_hash = receive_message(self.socket)
-        encrypted = self._verify_sender(top_hash)
-        if not encrypted:
-            return False
-        decrypted = self._decrypt_data(encrypted)
-        if not decrypted:
+        top_hash = self.receive_bytes()
+        if not top_hash:
             return False
 
-        self._latest_top_hash = decrypted
+        self._latest_top_hash = top_hash
         print('Client: Received top hash:', self._latest_top_hash)
         return True
 
