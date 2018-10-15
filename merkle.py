@@ -123,8 +123,6 @@ class MerkleTree(object):
 
 
 class TreeNode(object):
-    left_child = None
-    right_child = None
     node_hash = None
 
     def __init__(self, left_child: 'TreeNode' = None, right_child: 'TreeNode' = None, node_data: bytes = None):
@@ -173,7 +171,11 @@ class TreeNode(object):
 
     def __eq__(self, other):
         if other and isinstance(other, TreeNode):
-            return self.node_hash == other.node_hash and self.left_child == other.left_child and self.right_child == other.right_child
+            if self.left_child != other.left_child:
+                return False
+            if self.right_child != other.right_child:
+                return False
+            return self.node_hash == other.node_hash
         return super().__eq__(other)
 
     @classmethod
