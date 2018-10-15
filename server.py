@@ -59,6 +59,7 @@ class Server(ConnectionManager):
         send_message(self.socket, self.verify_key_hex)
         return True
 
+    # TODO: Remove possibility of a man in the middle attack
     def setup_secure_channel(self):
         # Generate our private / public key pair
         private_key, public_key = generate_keys()

@@ -7,7 +7,6 @@ from nacl.hash import sha256
 HASHER = sha256
 
 
-# TODO: Test
 # TODO: Documentation
 
 def node_from_json(node_json):

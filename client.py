@@ -52,6 +52,7 @@ class Client(ConnectionManager):
         self._connection_verify_key = nacl.signing.VerifyKey(server_key_hex, encoder=HexEncoder)
         return True
 
+    # TODO: Remove possibility of a man in the middle attack
     def setup_secure_channel(self):
         # Generate our private / public key pair
         private_key, public_key = generate_keys()
