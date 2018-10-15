@@ -19,14 +19,13 @@ def node_to_json(node):
     return json.dumps(node.flatten())
 
 
-def verify_top_hash(structure_json, file, top_hash):
+def get_top_hash(structure_json, file):
     """
-    Verifies that the provided structure coupled with the provided file
-    actually creates the provided root hash when calculated.
+    Calculates the root hash of the provided structure with the provided
+    file included.
     :param structure_json: The structure of a minimal tree in JSON.
     :param file: The file whose hash is to be used.
-    :param top_hash: The wanted root hash.
-    :return: True or False.
+    :return: The root hash of the merkle tree.
     """
     server_structure = node_from_json(structure_json)
 
@@ -34,7 +33,7 @@ def verify_top_hash(structure_json, file, top_hash):
     tree.top_node = server_structure
     custom = tree.get_structure_with_file(file, False)
     custom.fix_hash()
-    return custom.node_hash == top_hash
+    return custom.node_hash
 
 
 class MerkleTree(object):

@@ -112,8 +112,9 @@ class Server(ConnectionManager):
 
         print('Server: Received ', file.__dict__)
 
-        top_hash = self.merkle_tree.top_node.node_hash
-        self.send_bytes(top_hash)
+        hash_structure = self.merkle_tree.get_structure_with_file(file, True)
+        structure_json = node_to_json(hash_structure)
+        self.send_bytes(bytes(structure_json, encoding='utf-8'))
         return True
 
     def get_host(self):

@@ -9,7 +9,7 @@ from nacl.encoding import HexEncoder
 from nacl.public import Box, PublicKey
 
 from file import File, file_from_json, file_to_json
-from merkle import verify_top_hash
+from merkle import get_top_hash
 from socket_protocol import send_message, receive_message, generate_keys, ConnectionManager
 
 
@@ -86,12 +86,12 @@ class Client(ConnectionManager):
     def send_file(self, file):
         file_json = file_to_json(file)
         self.send_bytes(bytes(file_json, encoding='utf-8'))
-        top_hash = self.receive_bytes()
-        if not top_hash:
-            return False
+        hash_structure = self.receive_bytes()
+        if not hash_structure:
+            return None
 
-        self._latest_top_hash = top_hash
-        print('Client: Received top hash:', self._latest_top_hash)
+        self._latest_top_hash = get_top_hash(hash_structure, file)
+        print('Client: Calculated top hash:', self._latest_top_hash)
         return True
 
     def receive_file(self):
@@ -102,7 +102,7 @@ class Client(ConnectionManager):
         hash_structure = self.receive_bytes()
         if not hash_structure:
             return None
-        if not verify_top_hash(hash_structure, file, self._latest_top_hash):
+        if self._latest_top_hash != get_top_hash(hash_structure, file):
             return None
 
         return file
