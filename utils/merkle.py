@@ -1,10 +1,7 @@
 import copy
 import json
 
-from nacl.encoding import HexEncoder
-from nacl.hash import sha256
-
-HASHER = sha256
+from utils.crypto import hash_sha256
 
 
 # TODO: Documentation
@@ -94,7 +91,7 @@ class MerkleTree(object):
         if clear_file_hash:
             node.node_hash = None
         else:
-            node.node_hash = HASHER(bytes(file.data, encoding='utf-8'))
+            node.node_hash = hash_sha256(bytes(file.data, encoding='utf-8'))
 
         return root_node
 
@@ -129,7 +126,7 @@ class TreeNode(object):
         self.left_child = left_child
         self.right_child = right_child
         if node_data:
-            self.node_hash = HASHER(node_data)
+            self.node_hash = hash_sha256(node_data)
         else:
             self.fix_hash()
 
@@ -153,7 +150,7 @@ class TreeNode(object):
 
         if combined_hash != b'':
             # A node with only one valid child hashes that hash again.
-            self.node_hash = HASHER(combined_hash, encoder=HexEncoder)
+            self.node_hash = hash_sha256(combined_hash)
 
     def is_empty(self):
         return self.node_hash is None

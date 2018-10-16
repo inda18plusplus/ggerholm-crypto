@@ -1,10 +1,8 @@
 import struct
 
-from nacl.encoding import HexEncoder
-from nacl.exceptions import BadSignatureError
-from nacl.public import PrivateKey
 from nacl.secret import SecretBox
-from nacl.signing import SigningKey
+
+from utils.crypto import decrypt, verify_sender, sign, encrypt, generate_signing_keys
 
 
 def pack_data(data):
@@ -35,19 +33,6 @@ def receive_message(socket):
     return data
 
 
-def generate_keys():
-    private_key = PrivateKey.generate()
-    public_key = private_key.public_key
-    return private_key, public_key
-
-
-def generate_signing_keys():
-    signing_key = SigningKey.generate()
-    verify_key = signing_key.verify_key
-    verify_key_hex = verify_key.encode(encoder=HexEncoder)
-    return signing_key, verify_key_hex
-
-
 class ConnectionManager(object):
     connected = False
     socket = None
@@ -55,7 +40,7 @@ class ConnectionManager(object):
     _connection_verify_key = None
 
     def __init__(self):
-        self.signing_key, self.verify_key_hex = generate_signing_keys()
+        self._signing_key, self.verify_key_hex = generate_signing_keys()
 
     def _set_secret_key(self, key):
         self._secret_box = SecretBox(key)
@@ -69,10 +54,10 @@ class ConnectionManager(object):
         if not self.connected:
             return False
 
-        encrypted = self._encrypt_data(data)
+        encrypted = encrypt(self._secret_box, data)
         if not encrypted:
             return False
-        signed = self._sign_data(encrypted)
+        signed = sign(self._signing_key, encrypted)
         send_message(self.socket, signed)
         return True
 
@@ -88,30 +73,10 @@ class ConnectionManager(object):
         if not data:
             return None
 
-        encrypted = self._verify_sender(data)
+        encrypted = verify_sender(self._connection_verify_key, data)
         if not encrypted:
             return None
-        decrypted = self._decrypt_data(encrypted)
-        return decrypted
-
-    def _sign_data(self, data: bytes):
-        signed = self.signing_key.sign(data)
-        return signed
-
-    def _verify_sender(self, data: bytes):
-        try:
-            return self._connection_verify_key.verify(data)
-        except BadSignatureError:
-            return None
-
-    def _encrypt_data(self, data: bytes):
-        encrypted = self._secret_box.encrypt(data)
-        if len(encrypted) != len(data) + self._secret_box.NONCE_SIZE + self._secret_box.MACBYTES:
-            return None
-        return encrypted
-
-    def _decrypt_data(self, data: bytes):
-        decrypted = self._secret_box.decrypt(data)
+        decrypted = decrypt(self._secret_box, encrypted)
         return decrypted
 
     def disconnect(self):

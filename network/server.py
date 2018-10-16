@@ -8,7 +8,8 @@ from nacl.secret import SecretBox
 from nacl.signing import VerifyKey
 from nacl.utils import random
 
-from network.socket_protocol import receive_message, generate_keys, send_message, ConnectionManager
+from network.socket_protocol import receive_message, send_message, ConnectionManager
+from utils.crypto import generate_keys, verify_sender, sign
 from utils.file import file_from_json, file_to_json, read_certificate
 from utils.merkle import MerkleTree, node_to_json
 
@@ -45,7 +46,6 @@ class Server(ConnectionManager):
         time.sleep(0.5)
         self.send_file(0)
 
-    # TODO: Make use of Certificate Authorities?
     def accept_connection(self):
         self.server_socket.listen(5)
         self.socket, address = self.server_socket.accept()
@@ -60,7 +60,7 @@ class Server(ConnectionManager):
 
         # Verify that both the key and the certificate arrived unchanged
         client_certificate = receive_message(self.socket)
-        client_certificate = self._verify_sender(client_certificate)
+        client_certificate = verify_sender(self._connection_verify_key, client_certificate)
         if not client_certificate:
             self.socket.close()
             print('Server: Client certificate or key tampered with.')
@@ -75,7 +75,7 @@ class Server(ConnectionManager):
         # Send our verification hex
         send_message(self.socket, self.verify_key_hex)
         # Send our signed certificate
-        signed = self._sign_data(bytes(self.certificate, encoding='utf-8'))
+        signed = sign(self._signing_key, bytes(self.certificate, encoding='utf-8'))
         send_message(self.socket, signed)
 
         return True
@@ -91,21 +91,21 @@ class Server(ConnectionManager):
 
         # Receive the client's public key
         client_public_key = receive_message(self.socket)
-        client_public_key = self._verify_sender(client_public_key)
+        client_public_key = verify_sender(self._connection_verify_key, client_public_key)
         if not client_public_key:
             return False
         client_public_key = PublicKey(client_public_key, encoder=HexEncoder)
         print('Server: Client public key received.')
 
         # Send our public key to the client
-        send_message(self.socket, self._sign_data(public_key))
+        send_message(self.socket, sign(self._signing_key, public_key))
         print('Server: Public key sent.')
 
         # Create a secret key and send it to the client
         box = Box(private_key, client_public_key)
         secret_key = random(SecretBox.KEY_SIZE)
         encrypted = box.encrypt(secret_key)
-        send_message(self.socket, self._sign_data(encrypted))
+        send_message(self.socket, sign(self._signing_key, encrypted))
         print('Server: Secret key sent.')
 
         # Setup symmetric encryption using the secret key
