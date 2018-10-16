@@ -1,12 +1,22 @@
 import json
 
+from nacl.encoding import HexEncoder
+from nacl.hash import sha256
+
 
 def read_certificate(filename):
     content = ''
-    with open(filename, 'r') as f:
+    with open('certificates/' + filename, 'r') as f:
         for line in f.readlines():
             content += line
     return content
+
+
+def generate_certificate(filename, content):
+    hashed_content = sha256(bytes(content, encoding='utf-8'), encoder=HexEncoder).decode('utf-8')
+    with open('certificates/' + filename, 'w') as f:
+        f.write(hashed_content)
+    return hashed_content
 
 
 def _json_object_hook(data):

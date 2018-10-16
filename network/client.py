@@ -8,9 +8,9 @@ import nacl.utils
 from nacl.encoding import HexEncoder
 from nacl.public import Box, PublicKey
 
-from file import File, file_from_json, file_to_json, read_certificate
-from merkle import get_top_hash
-from socket_protocol import send_message, receive_message, generate_keys, ConnectionManager
+from network.socket_protocol import send_message, receive_message, generate_keys, ConnectionManager
+from utils.file import File, file_from_json, file_to_json, read_certificate
+from utils.merkle import get_top_hash
 
 
 class Client(ConnectionManager):
@@ -19,6 +19,9 @@ class Client(ConnectionManager):
     def __init__(self):
         super().__init__()
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        self.certificate = read_certificate('client_cert.txt')
+        self.server_certificate = read_certificate('server_cert.txt')
 
     # TODO: Remove temporary threading solution
     def start(self):
@@ -38,7 +41,7 @@ class Client(ConnectionManager):
         self.send_file(File(2, 'Secret file #2'))
         print('Client: Received ', self.receive_file().__dict__)
 
-    # TODO: Improve certificates
+    # TODO: Make use of Certificate Authorities?
     def connect_to_host(self, host, port):
         self.socket.connect((host, port))
         print('Client: Server connection established.')
@@ -46,8 +49,7 @@ class Client(ConnectionManager):
         # Send our verification hex
         send_message(self.socket, self.verify_key_hex)
         # Send our signed certificate
-        certificate = read_certificate('client_certificate.txt')
-        signed = self._sign_data(bytes(certificate, encoding='utf-8'))
+        signed = self._sign_data(bytes(self.certificate, encoding='utf-8'))
         send_message(self.socket, signed)
 
         # Receive the server's verification hex
@@ -66,7 +68,7 @@ class Client(ConnectionManager):
             return False
 
         server_certificate = server_certificate.decode('utf-8')
-        if server_certificate != read_certificate('server_certificate.txt'):
+        if server_certificate != self.server_certificate:
             self.disconnect()
             print('Client: Server certificate invalid.')
             return False

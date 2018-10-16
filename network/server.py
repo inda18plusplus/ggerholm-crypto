@@ -8,9 +8,9 @@ from nacl.secret import SecretBox
 from nacl.signing import VerifyKey
 from nacl.utils import random
 
-from file import file_from_json, file_to_json, read_certificate
-from merkle import MerkleTree, node_to_json
-from socket_protocol import receive_message, generate_keys, generate_signing_keys, send_message, ConnectionManager
+from network.socket_protocol import receive_message, generate_keys, send_message, ConnectionManager
+from utils.file import file_from_json, file_to_json, read_certificate
+from utils.merkle import MerkleTree, node_to_json
 
 
 class Server(ConnectionManager):
@@ -23,9 +23,10 @@ class Server(ConnectionManager):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((self.address, self.port))
 
-        self.signing_key, self.verify_key, self.verify_key_hex = generate_signing_keys()
-
         self.merkle_tree = MerkleTree()
+
+        self.certificate = read_certificate('server_cert.txt')
+        self.client_certificate = read_certificate('client_cert.txt')
 
     # TODO: Remove temporary threading solution
     def start(self):
@@ -44,7 +45,7 @@ class Server(ConnectionManager):
         time.sleep(0.5)
         self.send_file(0)
 
-    # TODO: Improve certificates
+    # TODO: Make use of Certificate Authorities?
     def accept_connection(self):
         self.server_socket.listen(5)
         self.socket, address = self.server_socket.accept()
@@ -66,7 +67,7 @@ class Server(ConnectionManager):
             return False
 
         client_certificate = client_certificate.decode('utf-8')
-        if client_certificate != read_certificate('client_certificate.txt'):
+        if client_certificate != self.client_certificate:
             self.socket.close()
             print('Server: Client certificate invalid.')
             return False
@@ -74,8 +75,7 @@ class Server(ConnectionManager):
         # Send our verification hex
         send_message(self.socket, self.verify_key_hex)
         # Send our signed certificate
-        certificate = read_certificate('server_certificate.txt')
-        signed = self._sign_data(bytes(certificate, encoding='utf-8'))
+        signed = self._sign_data(bytes(self.certificate, encoding='utf-8'))
         send_message(self.socket, signed)
 
         return True

@@ -45,7 +45,7 @@ def generate_signing_keys():
     signing_key = SigningKey.generate()
     verify_key = signing_key.verify_key
     verify_key_hex = verify_key.encode(encoder=HexEncoder)
-    return signing_key, verify_key, verify_key_hex
+    return signing_key, verify_key_hex
 
 
 class ConnectionManager(object):
@@ -55,7 +55,7 @@ class ConnectionManager(object):
     _connection_verify_key = None
 
     def __init__(self):
-        self.signing_key, self.verify_key, self.verify_key_hex = generate_signing_keys()
+        self.signing_key, self.verify_key_hex = generate_signing_keys()
 
     def _set_secret_key(self, key):
         self._secret_box = SecretBox(key)
