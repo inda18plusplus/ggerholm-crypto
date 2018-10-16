@@ -49,6 +49,7 @@ def generate_signing_keys():
 
 
 class ConnectionManager(object):
+    connected = False
     socket = None
     _secret_box = None
     _connection_verify_key = None
@@ -65,6 +66,9 @@ class ConnectionManager(object):
         :param data: The data (as a bytes-object) to be sent.
         :return: True if the data was successfully encrypted and sent, otherwise False.
         """
+        if not self.connected:
+            return False
+
         encrypted = self._encrypt_data(data)
         if not encrypted:
             return False
@@ -77,6 +81,9 @@ class ConnectionManager(object):
         Waits for data to be read then decrypts it and verifies the sender.
         :return: The decrypted data or None if the decryption or verification failed, or no data was received.
         """
+        if not self.connected:
+            return None
+
         data = receive_message(self.socket)
         if not data:
             return None
@@ -106,3 +113,11 @@ class ConnectionManager(object):
     def _decrypt_data(self, data: bytes):
         decrypted = self._secret_box.decrypt(data)
         return decrypted
+
+    def disconnect(self):
+        if not self.connected:
+            return
+
+        self.socket.shutdown()
+        self.socket.close()
+        self.connected = False

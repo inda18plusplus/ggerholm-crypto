@@ -1,6 +1,14 @@
 import json
 
 
+def read_certificate(filename):
+    content = ''
+    with open(filename, 'r') as f:
+        for line in f.readlines():
+            content += line
+    return content
+
+
 def _json_object_hook(data):
     return File(data['file_id'], data['data'])
 

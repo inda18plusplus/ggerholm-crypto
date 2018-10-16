@@ -8,7 +8,7 @@ import nacl.utils
 from nacl.encoding import HexEncoder
 from nacl.public import Box, PublicKey
 
-from file import File, file_from_json, file_to_json
+from file import File, file_from_json, file_to_json, read_certificate
 from merkle import get_top_hash
 from socket_protocol import send_message, receive_message, generate_keys, ConnectionManager
 
@@ -26,7 +26,7 @@ class Client(ConnectionManager):
         t.start()
 
     def run(self):
-        self.connect_to_host('localhost', 12317)
+        self.connected = self.connect_to_host('localhost', 12317)
         time.sleep(0.5)
         self.setup_secure_channel()
         self.send_bytes(bytes('Hej jag är hemlig data.', encoding='utf-8'))
@@ -38,22 +38,45 @@ class Client(ConnectionManager):
         self.send_file(File(2, 'Secret file #2'))
         print('Client: Received ', self.receive_file().__dict__)
 
+    # TODO: Improve certificates
     def connect_to_host(self, host, port):
         self.socket.connect((host, port))
         print('Client: Server connection established.')
 
         # Send our verification hex
         send_message(self.socket, self.verify_key_hex)
+        # Send our signed certificate
+        certificate = read_certificate('client_certificate.txt')
+        signed = self._sign_data(bytes(certificate, encoding='utf-8'))
+        send_message(self.socket, signed)
 
         # Receive the server's verification hex
         server_key_hex = receive_message(self.socket)
         if not server_key_hex:
+            self.disconnect()
             return False
         self._connection_verify_key = nacl.signing.VerifyKey(server_key_hex, encoder=HexEncoder)
+
+        # Verify that both the server certificate and verification key arrived unchanged
+        server_certificate = receive_message(self.socket)
+        server_certificate = self._verify_sender(server_certificate)
+        if not server_certificate:
+            self.disconnect()
+            print('Client: Server certificate or key tampered with.')
+            return False
+
+        server_certificate = server_certificate.decode('utf-8')
+        if server_certificate != read_certificate('server_certificate.txt'):
+            self.disconnect()
+            print('Client: Server certificate invalid.')
+            return False
+
         return True
 
-    # TODO: Remove possibility of a man in the middle attack
     def setup_secure_channel(self):
+        if not self.connected:
+            return
+
         # Generate our private / public key pair
         private_key, public_key = generate_keys()
         public_key = public_key.encode(encoder=HexEncoder)
@@ -85,17 +108,23 @@ class Client(ConnectionManager):
         return True
 
     def send_file(self, file):
+        if not self.connected:
+            return False
+
         file_json = file_to_json(file)
         self.send_bytes(bytes(file_json, encoding='utf-8'))
         hash_structure = self.receive_bytes()
         if not hash_structure:
-            return None
+            return False
 
         self._latest_top_hash = get_top_hash(hash_structure, file)
         print('Client: Calculated top hash:', self._latest_top_hash)
         return True
 
     def receive_file(self):
+        if not self.connected:
+            return None
+
         file_json = self.receive_bytes()
         if not file_json:
             return None
