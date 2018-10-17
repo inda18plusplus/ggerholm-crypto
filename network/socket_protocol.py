@@ -39,8 +39,9 @@ class ConnectionManager(object):
     _secret_box = None
     _connection_verify_key = None
 
-    def __init__(self):
+    def __init__(self, use_default_ssl=False):
         self._signing_key, self.verify_key_hex = generate_signing_keys()
+        self.default_ssl = use_default_ssl
 
     def _set_secret_key(self, key):
         self._secret_box = SecretBox(key)
@@ -53,6 +54,10 @@ class ConnectionManager(object):
         """
         if not self.connected:
             return False
+
+        if self.default_ssl:
+            send_message(self.socket, data)
+            return True
 
         encrypted = encrypt(self._secret_box, data)
         if not encrypted:
@@ -72,6 +77,9 @@ class ConnectionManager(object):
         data = receive_message(self.socket)
         if not data:
             return None
+
+        if self.default_ssl:
+            return data
 
         encrypted = verify_sender(self._connection_verify_key, data)
         if not encrypted:

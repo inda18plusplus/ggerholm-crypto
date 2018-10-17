@@ -9,9 +9,7 @@ def setup_certificates():
 
 
 if __name__ == '__main__':
-    setup_certificates()
-
-    server = Server()
+    server = Server(True)
     server.start()
-    client = Client()
+    client = Client(True)
     client.start()

@@ -1,4 +1,5 @@
 import socket
+import ssl
 import time
 from threading import Thread
 
@@ -17,8 +18,8 @@ from utils.merkle import MerkleTree, node_to_json
 class Server(ConnectionManager):
     files = []
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, use_default_ssl=False):
+        super().__init__(use_default_ssl)
         self.address = '127.0.0.1'
         self.port = 12317
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -36,7 +37,10 @@ class Server(ConnectionManager):
 
     def run(self):
         self.connected = self.accept_connection()
+        if not self.connected:
+            return
         self.setup_secure_channel()
+
         print('Server: Received "', self.receive_bytes().decode('utf-8'), '"', sep='')
         self.receive_file()
         self.receive_file()
@@ -50,6 +54,19 @@ class Server(ConnectionManager):
         self.server_socket.listen(5)
         self.socket, address = self.server_socket.accept()
         print('Server: Client connected from', address)
+
+        if self.default_ssl:
+            context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+            context.verify_mode = ssl.CERT_REQUIRED
+            context.load_verify_locations('certificates/client.pem')
+            context.load_cert_chain(certfile='certificates/server.pem', keyfile='certificates/server.key')
+
+            self.socket = context.wrap_socket(self.socket, server_side=True)
+            cert = self.socket.getpeercert()
+            if not cert or ('commonName', 'Saturn') not in cert['subject'][5]:
+                self.disconnect()
+                return False
+            return True
 
         # Receive the client's verification hex
         client_key_hex = receive_message(self.socket)
@@ -81,8 +98,8 @@ class Server(ConnectionManager):
         return True
 
     def setup_secure_channel(self):
-        if not self.connected:
-            return
+        if not self.connected or self.default_ssl:
+            return False
 
         # Generate our private / public key pair
         private_key, public_key = generate_keys()

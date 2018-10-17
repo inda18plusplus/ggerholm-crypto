@@ -1,4 +1,5 @@
 import socket
+import ssl
 import time
 from threading import Thread
 
@@ -17,8 +18,8 @@ from utils.merkle import get_top_hash
 class Client(ConnectionManager):
     _latest_top_hash = None
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, use_default_ssl=False):
+        super().__init__(use_default_ssl)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         self.certificate = read_certificate('client_cert.txt')
@@ -31,6 +32,8 @@ class Client(ConnectionManager):
 
     def run(self):
         self.connected = self.connect_to_host('localhost', 12317)
+        if not self.connected:
+            return
         time.sleep(0.5)
         self.setup_secure_channel()
         self.send_bytes(bytes('Hej jag är hemlig data.', encoding='utf-8'))
@@ -45,6 +48,24 @@ class Client(ConnectionManager):
     def connect_to_host(self, host, port):
         self.socket.connect((host, port))
         print('Client: Server connection established.')
+
+        if self.default_ssl:
+            context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+            context.verify_mode = ssl.CERT_REQUIRED
+            context.load_verify_locations('certificates/server.pem')
+            context.load_cert_chain(certfile='certificates/client.pem', keyfile='certificates/client.key')
+
+            if ssl.HAS_SNI:
+                self.socket = context.wrap_socket(self.socket, server_side=False, server_hostname=host)
+            else:
+                self.socket = context.wrap_socket(self.socket, server_side=False)
+
+            cert = self.socket.getpeercert()
+            if not cert or ('commonName', 'Jupiter') not in cert['subject'][5]:
+                self.disconnect()
+                return False
+
+            return True
 
         # Send our verification hex
         send_message(self.socket, self.verify_key_hex)
@@ -76,8 +97,8 @@ class Client(ConnectionManager):
         return True
 
     def setup_secure_channel(self):
-        if not self.connected:
-            return
+        if not self.connected or self.default_ssl:
+            return False
 
         # Generate our private / public key pair
         private_key, public_key = generate_keys()
