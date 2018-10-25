@@ -24,7 +24,6 @@ class Client(ConnectionManager):
         self.certificate = read_certificate('client_cert.txt')
         self.server_certificate = read_certificate('server_cert.txt')
 
-    # TODO: Remove temporary threading solution
     def start(self):
         self.connected = self.connect_to_host('localhost', 12317)
         if not self.connected:
