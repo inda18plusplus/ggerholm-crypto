@@ -2,9 +2,8 @@ import copy
 import json
 
 from utils.crypto import hash_sha256
+from utils.file import File
 
-
-# TODO: Documentation
 
 def node_from_json(node_json):
     d = json.loads(node_json)
@@ -15,7 +14,7 @@ def node_to_json(node):
     return json.dumps(node.flatten())
 
 
-def get_top_hash(structure_json, file):
+def get_root_hash(structure_json, file):
     """
     Calculates the root hash of the provided structure with the provided
     file included.
@@ -23,32 +22,32 @@ def get_top_hash(structure_json, file):
     :param file: The file whose hash is to be used.
     :return: The root hash of the merkle tree.
     """
-    server_structure = node_from_json(structure_json)
+    structure = node_from_json(structure_json)
 
     tree = MerkleTree()
-    tree.top_node = server_structure
-    custom = tree.get_structure_with_file(file, False)
-    custom.fix_hash()
-    return custom.node_hash
+    tree.root_node = structure
+    validation_node = tree.get_structure_with_file(file, False)
+    validation_node.fix_hash()
+    return validation_node.node_hash
 
 
 class MerkleTree(object):
-    top_node = None
+    root_node = None
 
     def __init__(self, foundation_length=16):
         self.foundation = []
         for i in range(0, foundation_length):
             self.foundation.append(TreeNode())
 
-    def add_file(self, file):
+    def insert_file(self, file: 'File'):
         """
-        Adds a file hash to the tree's foundation.
-        The file id decides the position of the leaf node.
+        Inserts a file hash to the tree's foundation.
+        The file_id decides the position of the leaf node.
         :param file: A File-object with a valid ID.
         """
         node = TreeNode(None, None, bytes(file.data, encoding='utf-8'))
         self.foundation[file.file_id] = node
-        self.build()
+        self.update(file)
 
     def get_structure_with_file(self, file, clear_file_hash=False):
         """
@@ -56,11 +55,11 @@ class MerkleTree(object):
         verifiable.
         :param file: The file whose hash has to be included in the tree.
         :param clear_file_hash: If the file hash should be cleared out.
-        :return: The top node of the newly created tree.
+        :return: The root node of the newly created tree.
         """
         left_margin = 0
         width = len(self.foundation)
-        real_node = self.top_node
+        real_node = self.root_node
         node = TreeNode()
         root_node = node
         while width > 1:
@@ -95,6 +94,41 @@ class MerkleTree(object):
 
         return root_node
 
+    def update(self, file: 'File'):
+        """
+        Traverses the tree and updates the hashes connected to the provided file, including the leaf node itself.
+        :param file: A File-object with a valid ID.
+        """
+        left_margin = 0
+        width = len(self.foundation)
+        node = self.root_node
+        nodes = [self.root_node]
+        while width > 1:
+            if file.file_id >= left_margin + width / 2:
+                nodes.append((node.left_child, node.right_child, False))
+                node = node.right_child
+                left_margin += width / 2
+            else:
+                nodes.append((node.left_child, node.right_child, True))
+                node = node.left_child
+            width /= 2
+
+        if nodes[-1][2]:
+            nodes[-1][0].node_hash = hash_sha256(bytes(file.data, encoding='utf-8'))
+        else:
+            nodes[-1][1].node_hash = hash_sha256(bytes(file.data, encoding='utf-8'))
+
+        for i in reversed(range(0, len(nodes) - 2)):
+            if i == 0:
+                nodes[i].node_hash = None
+                nodes[i].fix_hash()
+            elif nodes[i][2]:
+                nodes[i][0].node_hash = None
+                nodes[i][0].fix_hash()
+            else:
+                nodes[i][1].node_hash = None
+                nodes[i][1].fix_hash()
+
     def build(self):
         """
         Builds the tree from the bottom up.
@@ -115,7 +149,7 @@ class MerkleTree(object):
             nodes = next_level.copy()
             next_level = []
 
-        self.top_node = nodes[0] if len(nodes) > 0 else None
+        self.root_node = nodes[0] if len(nodes) > 0 else None
 
 
 class TreeNode(object):
@@ -149,7 +183,6 @@ class TreeNode(object):
                 combined_hash += self.right_child.node_hash
 
         if combined_hash != b'':
-            # A node with only one valid child hashes that hash again.
             self.node_hash = hash_sha256(combined_hash)
 
     def is_empty(self):

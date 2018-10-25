@@ -12,7 +12,7 @@ from nacl.public import Box, PublicKey
 from network.socket_protocol import send_message, receive_message, ConnectionManager
 from utils.crypto import generate_keys, sign, verify_sender
 from utils.file import File, file_from_json, file_to_json, read_certificate
-from utils.merkle import get_top_hash
+from utils.merkle import get_root_hash
 
 
 class Client(ConnectionManager):
@@ -140,7 +140,7 @@ class Client(ConnectionManager):
         if not hash_structure:
             return False
 
-        self._latest_top_hash = get_top_hash(hash_structure, file)
+        self._latest_top_hash = get_root_hash(hash_structure, file)
         print('Client: Calculated top hash:', self._latest_top_hash)
         return True
 
@@ -155,7 +155,7 @@ class Client(ConnectionManager):
         hash_structure = self.receive_bytes()
         if not hash_structure:
             return None
-        if self._latest_top_hash != get_top_hash(hash_structure, file):
+        if self._latest_top_hash != get_root_hash(hash_structure, file):
             return None
 
         return file

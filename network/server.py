@@ -26,6 +26,7 @@ class Server(ConnectionManager):
         self.server_socket.bind((self.address, self.port))
 
         self.merkle_tree = MerkleTree()
+        self.merkle_tree.build()
 
         self.certificate = read_certificate('server_cert.txt')
         self.client_certificate = read_certificate('client_cert.txt')
@@ -154,7 +155,7 @@ class Server(ConnectionManager):
             return False
 
         file = file_from_json(file_json.decode('utf-8'))
-        self.merkle_tree.add_file(file)
+        self.merkle_tree.insert_file(file)
         self.files.append(file)
 
         print('Server: Received ', file.__dict__)
