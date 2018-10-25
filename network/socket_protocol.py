@@ -74,8 +74,12 @@ class ConnectionManager(object):
         if not self.connected:
             return None
 
-        data = receive_message(self.socket)
-        if not data:
+        try:
+            data = receive_message(self.socket)
+            if not data:
+                return None
+        except ConnectionAbortedError:
+            self.connected = False
             return None
 
         if self.default_ssl:
@@ -91,6 +95,5 @@ class ConnectionManager(object):
         if not self.connected:
             return
 
-        self.socket.shutdown()
         self.socket.close()
         self.connected = False

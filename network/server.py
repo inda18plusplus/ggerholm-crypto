@@ -1,6 +1,5 @@
 import socket
 import ssl
-import time
 from threading import Thread
 
 from nacl.encoding import HexEncoder
@@ -9,6 +8,7 @@ from nacl.secret import SecretBox
 from nacl.signing import VerifyKey
 from nacl.utils import random
 
+from network.request import request_from_json
 from network.socket_protocol import receive_message, send_message, ConnectionManager
 from utils.crypto import generate_keys, verify_sender, sign
 from utils.file import file_from_json, file_to_json, read_certificate
@@ -31,10 +31,9 @@ class Server(ConnectionManager):
         self.certificate = read_certificate('server_cert.txt')
         self.client_certificate = read_certificate('client_cert.txt')
 
-    # TODO: Remove temporary threading solution
     def start(self):
-        t = Thread(target=self.run)
-        t.start()
+        thread = Thread(target=self.run)
+        thread.start()
 
     def run(self):
         self.connected = self.accept_connection()
@@ -42,14 +41,13 @@ class Server(ConnectionManager):
             return
         self.setup_secure_channel()
 
-        print('Server: Received "', self.receive_bytes().decode('utf-8'), '"', sep='')
-        self.receive_file()
-        self.receive_file()
-        time.sleep(0.5)
-        self.send_file(5)
-        self.receive_file()
-        time.sleep(0.5)
-        self.send_file(0)
+        while self.connected:
+            result = self.await_request()
+            if result:
+                print('Server: Request processed.')
+            else:
+                self.send_bytes(bytes('error', encoding='utf-8'))
+                print('Server: Request could not be processed.')
 
     def accept_connection(self):
         self.server_socket.listen(5)
@@ -130,6 +128,25 @@ class Server(ConnectionManager):
         self._set_secret_key(secret_key)
         return True
 
+    def await_request(self):
+        if not self.connected:
+            return False
+
+        request_json = self.receive_bytes()
+        if not request_json:
+            return False
+        request = request_from_json(request_json.decode('utf-8'))
+        if not request:
+            return False
+
+        if request.type == 'get_file':
+            file_id = int(request.data)
+            return self.send_file(file_id)
+        if request.type == 'send_file':
+            file = file_from_json(request.data)
+            return self.receive_file(file)
+        return True
+
     def send_file(self, file_id):
         if not self.connected:
             return False
@@ -146,15 +163,9 @@ class Server(ConnectionManager):
         self.send_bytes(bytes(structure_json, encoding='utf-8'))
         return True
 
-    def receive_file(self):
+    def receive_file(self, file):
         if not self.connected:
             return False
-
-        file_json = self.receive_bytes()
-        if not file_json:
-            return False
-
-        file = file_from_json(file_json.decode('utf-8'))
         self.merkle_tree.insert_file(file)
         self.files.append(file)
 
@@ -167,3 +178,8 @@ class Server(ConnectionManager):
 
     def get_host(self):
         return self.address, self.port
+
+
+if __name__ == '__main__':
+    server = Server(False)
+    server.start()

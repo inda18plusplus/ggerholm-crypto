@@ -1,7 +1,5 @@
 import socket
 import ssl
-import time
-from threading import Thread
 
 import nacl.secret
 import nacl.signing
@@ -9,6 +7,7 @@ import nacl.utils
 from nacl.encoding import HexEncoder
 from nacl.public import Box, PublicKey
 
+from network.request import Request, request_to_json
 from network.socket_protocol import send_message, receive_message, ConnectionManager
 from utils.crypto import generate_keys, sign, verify_sender
 from utils.file import File, file_from_json, file_to_json, read_certificate
@@ -27,23 +26,10 @@ class Client(ConnectionManager):
 
     # TODO: Remove temporary threading solution
     def start(self):
-        t = Thread(target=self.run)
-        t.start()
-
-    def run(self):
         self.connected = self.connect_to_host('localhost', 12317)
         if not self.connected:
             return
-        time.sleep(0.5)
         self.setup_secure_channel()
-        self.send_bytes(bytes('Hej jag är hemlig data.', encoding='utf-8'))
-
-        self.send_file(File(0, 'Secret file #0'))
-        self.send_file(File(5, 'Secret file #5'))
-        print('Client: Received ', self.receive_file().__dict__)
-        time.sleep(0.5)
-        self.send_file(File(2, 'Secret file #2'))
-        print('Client: Received ', self.receive_file().__dict__)
 
     def connect_to_host(self, host, port):
         self.socket.connect((host, port))
@@ -135,21 +121,32 @@ class Client(ConnectionManager):
             return False
 
         file_json = file_to_json(file)
-        self.send_bytes(bytes(file_json, encoding='utf-8'))
+        request = Request('send_file', file_json)
+        request_json = request_to_json(request)
+        self.send_bytes(bytes(request_json, encoding='utf-8'))
+
         hash_structure = self.receive_bytes()
-        if not hash_structure:
+        if not hash_structure or hash_structure.decode('utf-8') == 'error':
             return False
 
         self._latest_top_hash = get_root_hash(hash_structure, file)
         print('Client: Calculated top hash:', self._latest_top_hash)
         return True
 
+    def request_file(self, file_id):
+        if not self.connected:
+            return None
+        request = Request('get_file', file_id)
+        request_json = request_to_json(request)
+        self.send_bytes(bytes(request_json, encoding='utf-8'))
+        return self.receive_file()
+
     def receive_file(self):
         if not self.connected:
             return None
 
         file_json = self.receive_bytes()
-        if not file_json:
+        if not file_json or file_json.decode('utf-8') == 'error':
             return None
         file = file_from_json(file_json.decode('utf-8'))
         hash_structure = self.receive_bytes()
@@ -159,3 +156,24 @@ class Client(ConnectionManager):
             return None
 
         return file
+
+
+if __name__ == '__main__':
+    client = Client(False)
+    client.start()
+
+    print('Ready to serve:')
+    while client.connected:
+        cmd = input()
+        tokens = cmd.split(' ')
+        if len(tokens) < 2:
+            client.disconnect()
+        if tokens[0] == 'send':
+            fid = int(tokens[1])
+            data = ' '.join(tokens[2:])
+            client.send_file(File(fid, data))
+        elif tokens[0] == 'get':
+            fid = int(tokens[1])
+            result = client.request_file(fid)
+            print(result.data if result else 'No data received.')
+    print('Disconnected')
