@@ -105,29 +105,18 @@ class MerkleTree(object):
         nodes = [self.root_node]
         while width > 1:
             if file.file_id >= left_margin + width / 2:
-                nodes.append((node.left_child, node.right_child, False))
+                nodes.append(node.right_child)
                 node = node.right_child
                 left_margin += width / 2
             else:
-                nodes.append((node.left_child, node.right_child, True))
+                nodes.append(node.left_child)
                 node = node.left_child
             width /= 2
 
-        if nodes[-1][2]:
-            nodes[-1][0].node_hash = hash_sha256(bytes(file.data, encoding='utf-8'))
-        else:
-            nodes[-1][1].node_hash = hash_sha256(bytes(file.data, encoding='utf-8'))
-
+        nodes[-1].node_hash = hash_sha256(bytes(file.data, encoding='utf-8'))
         for i in reversed(range(0, len(nodes) - 2)):
-            if i == 0:
-                nodes[i].node_hash = None
-                nodes[i].fix_hash()
-            elif nodes[i][2]:
-                nodes[i][0].node_hash = None
-                nodes[i][0].fix_hash()
-            else:
-                nodes[i][1].node_hash = None
-                nodes[i][1].fix_hash()
+            nodes[i].node_hash = None
+            nodes[i].fix_hash()
 
     def build(self):
         """
