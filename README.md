@@ -6,7 +6,7 @@ A simple client - server setup focused on secure communication.
  - Send / receive files using both the client and the server.
  - File verification using Merkle-trees.
  - The server is limited to one client. (It's a feature)
- - The client and server certification files have to be contained within each distribution. (Also a feature)
+ - The client and server secret files have to be contained within each distribution. (Also a feature)
 
 ### Algorithms Used
  - SHA256 for all hashes.

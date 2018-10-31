@@ -22,6 +22,7 @@ def run_server(default_ssl_impl=False):
 
 class Server(ConnectionManager):
     files = []
+    keep_alive = True
 
     def __init__(self, use_default_ssl=False, ip_address='127.0.0.1', port=12317):
         super().__init__(use_default_ssl)
@@ -53,6 +54,8 @@ class Server(ConnectionManager):
             elif self.connected:
                 self.send_bytes_secure(bytes('error', encoding='utf-8'))
                 print('Server: Request could not be processed.')
+        if self.keep_alive:
+            self.run_thread()
 
     def accept_connection(self):
         self.server_socket.listen(5)
@@ -150,6 +153,10 @@ class Server(ConnectionManager):
         if request.type == 'send_file':
             file = file_from_json(request.data)
             return self.receive_file(file)
+        if request.type == 'exit':
+            self.keep_alive = False
+            self.disconnect()
+            return True
         return True
 
     def send_file(self, file_id):

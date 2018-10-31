@@ -25,11 +25,10 @@ def run_client(default_ssl_impl=False):
             client.disconnect()
             break
         tokens = cmd.split(' ')
-        if len(tokens) < 2:
-            print('Incorrect number of arguments.')
-            continue
         try:
-            if tokens[0] == 'send':
+            if tokens[0] == 'exit':
+                client.exit()
+            elif tokens[0] == 'send':
                 fid = int(tokens[1])
                 data = ' '.join(tokens[2:])
                 if len(data) == 0:
@@ -41,9 +40,11 @@ def run_client(default_ssl_impl=False):
                 result = client.request_file(fid)
                 print(result.data if result else 'No data received.')
             else:
-                print('Command not recognized')
+                print('Command not recognized.')
         except ValueError:
             print('Incorrect argument type.')
+        except IndexError:
+            print('Incorrect number of arguments.')
     print('Disconnected')
 
 
@@ -148,6 +149,15 @@ class Client(ConnectionManager):
         self._set_secret_key(secret_key)
         return True
 
+    def exit(self):
+        if not self.connected:
+            return False
+        request = Request('exit', '')
+        request_json = request_to_json(request)
+        self.send_bytes_secure(bytes(request_json, encoding='utf-8'))
+        self.disconnect()
+        return True
+
     def send_file(self, file):
         if not self.connected:
             return False
@@ -184,7 +194,11 @@ class Client(ConnectionManager):
         hash_structure = self.receive_bytes_secure()
         if not hash_structure:
             return None
-        if self._latest_top_hash != get_root_hash(hash_structure, file):
+
+        provided_root_hash = get_root_hash(hash_structure, file)
+        if not self._latest_top_hash:
+            self._latest_top_hash = provided_root_hash
+        elif self._latest_top_hash != provided_root_hash:
             return None
 
         return file

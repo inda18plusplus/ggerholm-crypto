@@ -1,7 +1,6 @@
 import json
 
-from nacl.encoding import HexEncoder
-from nacl.hash import sha256
+from utils.crypto import hash_sha256
 
 
 def read_certificate(filename):
@@ -22,7 +21,7 @@ def write_certificate(filename, certificate):
 
 
 def generate_certificate(filename, content):
-    hashed_content = sha256(bytes(content, encoding='utf-8'), encoder=HexEncoder).decode('utf-8')
+    hashed_content = hash_sha256(bytes(content, encoding='utf-8')).decode('utf-8')
     with open('certificates/' + filename, 'w') as f:
         f.write(hashed_content)
     return hashed_content
