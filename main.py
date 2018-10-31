@@ -1,5 +1,5 @@
-from network.client import Client
-from network.server import Server
+from network.client import run_client
+from network.server import run_server
 from utils.file import generate_certificate
 
 
@@ -9,8 +9,5 @@ def setup_certificates():
 
 
 if __name__ == '__main__':
-    server = Server(False)
-    server.start()
-    client = Client(False)
-    client.start()
-    client.disconnect()
+    run_server(True)
+    run_client(True)

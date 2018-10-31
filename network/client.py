@@ -14,6 +14,39 @@ from utils.file import File, file_from_json, file_to_json, read_certificate
 from utils.merkle import get_root_hash
 
 
+def run_client(default_ssl_impl=False):
+    client = Client(default_ssl_impl)
+    client.start()
+
+    print('Ready to serve:')
+    while client.connected:
+        cmd = input('> ')
+        if len(cmd) == 0:
+            client.disconnect()
+            break
+        tokens = cmd.split(' ')
+        if len(tokens) < 2:
+            print('Incorrect number of arguments.')
+            continue
+        try:
+            if tokens[0] == 'send':
+                fid = int(tokens[1])
+                data = ' '.join(tokens[2:])
+                if len(data) == 0:
+                    print('No data provided.')
+                    continue
+                client.send_file(File(fid, data))
+            elif tokens[0] == 'get':
+                fid = int(tokens[1])
+                result = client.request_file(fid)
+                print(result.data if result else 'No data received.')
+            else:
+                print('Command not recognized')
+        except ValueError:
+            print('Incorrect argument type.')
+    print('Disconnected')
+
+
 class Client(ConnectionManager):
     _latest_top_hash = None
 
@@ -24,8 +57,8 @@ class Client(ConnectionManager):
         self.certificate = read_certificate('client_secret.txt')
         self.server_certificate = read_certificate('server_secret.txt')
 
-    def start(self):
-        self.connected = self.connect_to_host('localhost', 12317)
+    def start(self, host_ip='localhost', port=12317):
+        self.connected = self.connect_to_host(host_ip, port)
         if not self.connected:
             return
         self.setup_secure_channel()
@@ -158,33 +191,4 @@ class Client(ConnectionManager):
 
 
 if __name__ == '__main__':
-    client = Client(False)
-    client.start()
-
-    print('Ready to serve:')
-    while client.connected:
-        cmd = input()
-        if len(cmd) == 0:
-            client.disconnect()
-            break
-        tokens = cmd.split(' ')
-        if len(tokens) < 2:
-            print('Incorrect number of arguments.')
-            continue
-        try:
-            if tokens[0] == 'send':
-                fid = int(tokens[1])
-                data = ' '.join(tokens[2:])
-                if len(data) == 0:
-                    print('No data provided.')
-                    continue
-                client.send_file(File(fid, data))
-            elif tokens[0] == 'get':
-                fid = int(tokens[1])
-                result = client.request_file(fid)
-                print(result.data if result else 'No data received.')
-            else:
-                print('Command not recognized')
-        except ValueError:
-            pass
-    print('Disconnected')
+    run_client()

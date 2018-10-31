@@ -15,13 +15,18 @@ from utils.file import file_from_json, file_to_json, read_certificate
 from utils.merkle import MerkleTree, node_to_json
 
 
+def run_server(default_ssl_impl=False):
+    server = Server(default_ssl_impl)
+    server.start()
+
+
 class Server(ConnectionManager):
     files = []
 
-    def __init__(self, use_default_ssl=False):
+    def __init__(self, use_default_ssl=False, ip_address='127.0.0.1', port=12317):
         super().__init__(use_default_ssl)
-        self.address = '127.0.0.1'
-        self.port = 12317
+        self.address = ip_address
+        self.port = port
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((self.address, self.port))
 
@@ -32,10 +37,10 @@ class Server(ConnectionManager):
         self.client_certificate = read_certificate('client_secret.txt')
 
     def start(self):
-        thread = Thread(target=self.run)
+        thread = Thread(target=self.run_thread)
         thread.start()
 
-    def run(self):
+    def run_thread(self):
         self.connected = self.accept_connection()
         if not self.connected:
             return
@@ -45,7 +50,7 @@ class Server(ConnectionManager):
             result = self.await_request()
             if result:
                 print('Server: Request processed.')
-            else:
+            elif self.connected:
                 self.send_bytes_secure(bytes('error', encoding='utf-8'))
                 print('Server: Request could not be processed.')
 
@@ -182,5 +187,4 @@ class Server(ConnectionManager):
 
 
 if __name__ == '__main__':
-    server = Server(False)
-    server.start()
+    run_server()
