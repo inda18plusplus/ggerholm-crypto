@@ -21,8 +21,8 @@ class Client(ConnectionManager):
         super().__init__(use_default_ssl)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        self.certificate = read_certificate('client_cert.txt')
-        self.server_certificate = read_certificate('server_cert.txt')
+        self.certificate = read_certificate('client_secret.txt')
+        self.server_certificate = read_certificate('server_secret.txt')
 
     def start(self):
         self.connected = self.connect_to_host('localhost', 12317)
@@ -164,10 +164,13 @@ if __name__ == '__main__':
     print('Ready to serve:')
     while client.connected:
         cmd = input()
-        tokens = cmd.split(' ')
-        if len(tokens) == 0:
+        if len(cmd) == 0:
             client.disconnect()
             break
+        tokens = cmd.split(' ')
+        if len(tokens) < 2:
+            print('Incorrect number of arguments.')
+            continue
         try:
             if tokens[0] == 'send':
                 fid = int(tokens[1])

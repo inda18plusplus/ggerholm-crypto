@@ -4,8 +4,8 @@ from utils.file import generate_certificate
 
 
 def setup_certificates():
-    generate_certificate('server_cert.txt', 'SuperSecretThingThatCantBeGuessed')
-    generate_certificate('client_cert.txt', 'TjahoTjahojDetHärÄrJuSkoj')
+    generate_certificate('server_secret.txt', 'SuperSecretThingThatCantBeGuessed')
+    generate_certificate('client_secret.txt', 'TjahoTjahojDetHärÄrJuSkoj')
 
 
 if __name__ == '__main__':

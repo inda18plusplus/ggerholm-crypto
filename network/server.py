@@ -28,8 +28,8 @@ class Server(ConnectionManager):
         self.merkle_tree = MerkleTree()
         self.merkle_tree.build()
 
-        self.certificate = read_certificate('server_cert.txt')
-        self.client_certificate = read_certificate('client_cert.txt')
+        self.certificate = read_certificate('server_secret.txt')
+        self.client_certificate = read_certificate('client_secret.txt')
 
     def start(self):
         thread = Thread(target=self.run)
