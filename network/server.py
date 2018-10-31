@@ -46,7 +46,7 @@ class Server(ConnectionManager):
             if result:
                 print('Server: Request processed.')
             else:
-                self.send_bytes(bytes('error', encoding='utf-8'))
+                self.send_bytes_secure(bytes('error', encoding='utf-8'))
                 print('Server: Request could not be processed.')
 
     def accept_connection(self):
@@ -132,7 +132,7 @@ class Server(ConnectionManager):
         if not self.connected:
             return False
 
-        request_json = self.receive_bytes()
+        request_json = self.receive_bytes_secure()
         if not request_json:
             return False
         request = request_from_json(request_json.decode('utf-8'))
@@ -158,22 +158,23 @@ class Server(ConnectionManager):
         hash_structure = self.merkle_tree.get_structure_with_file(file, True)
 
         file_json = file_to_json(file)
-        self.send_bytes(bytes(file_json, encoding='utf-8'))
+        self.send_bytes_secure(bytes(file_json, encoding='utf-8'))
         structure_json = node_to_json(hash_structure)
-        self.send_bytes(bytes(structure_json, encoding='utf-8'))
+        self.send_bytes_secure(bytes(structure_json, encoding='utf-8'))
         return True
 
     def receive_file(self, file):
         if not self.connected:
             return False
-        self.merkle_tree.insert_file(file)
+        if not self.merkle_tree.insert_file(file):
+            return False
         self.files.append(file)
 
         print('Server: Received ', file.__dict__)
 
         hash_structure = self.merkle_tree.get_structure_with_file(file, True)
         structure_json = node_to_json(hash_structure)
-        self.send_bytes(bytes(structure_json, encoding='utf-8'))
+        self.send_bytes_secure(bytes(structure_json, encoding='utf-8'))
         return True
 
     def get_host(self):

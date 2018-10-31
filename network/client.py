@@ -122,9 +122,9 @@ class Client(ConnectionManager):
         file_json = file_to_json(file)
         request = Request('send_file', file_json)
         request_json = request_to_json(request)
-        self.send_bytes(bytes(request_json, encoding='utf-8'))
+        self.send_bytes_secure(bytes(request_json, encoding='utf-8'))
 
-        hash_structure = self.receive_bytes()
+        hash_structure = self.receive_bytes_secure()
         if not hash_structure or hash_structure.decode('utf-8') == 'error':
             return False
 
@@ -137,18 +137,18 @@ class Client(ConnectionManager):
             return None
         request = Request('get_file', file_id)
         request_json = request_to_json(request)
-        self.send_bytes(bytes(request_json, encoding='utf-8'))
+        self.send_bytes_secure(bytes(request_json, encoding='utf-8'))
         return self.receive_file()
 
     def receive_file(self):
         if not self.connected:
             return None
 
-        file_json = self.receive_bytes()
+        file_json = self.receive_bytes_secure()
         if not file_json or file_json.decode('utf-8') == 'error':
             return None
         file = file_from_json(file_json.decode('utf-8'))
-        hash_structure = self.receive_bytes()
+        hash_structure = self.receive_bytes_secure()
         if not hash_structure:
             return None
         if self._latest_top_hash != get_root_hash(hash_structure, file):
@@ -165,14 +165,23 @@ if __name__ == '__main__':
     while client.connected:
         cmd = input()
         tokens = cmd.split(' ')
-        if len(tokens) < 2:
+        if len(tokens) == 0:
             client.disconnect()
-        if tokens[0] == 'send':
-            fid = int(tokens[1])
-            data = ' '.join(tokens[2:])
-            client.send_file(File(fid, data))
-        elif tokens[0] == 'get':
-            fid = int(tokens[1])
-            result = client.request_file(fid)
-            print(result.data if result else 'No data received.')
+            break
+        try:
+            if tokens[0] == 'send':
+                fid = int(tokens[1])
+                data = ' '.join(tokens[2:])
+                if len(data) == 0:
+                    print('No data provided.')
+                    continue
+                client.send_file(File(fid, data))
+            elif tokens[0] == 'get':
+                fid = int(tokens[1])
+                result = client.request_file(fid)
+                print(result.data if result else 'No data received.')
+            else:
+                print('Command not recognized')
+        except ValueError:
+            pass
     print('Disconnected')

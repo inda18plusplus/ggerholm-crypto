@@ -46,7 +46,7 @@ class ConnectionManager(object):
     def _set_secret_key(self, key):
         self._secret_box = SecretBox(key)
 
-    def send_bytes(self, data: bytes):
+    def send_bytes_secure(self, data: bytes):
         """
         Encrypts and signs the provided data then sends it to the connected device.
         :param data: The data (as a bytes-object) to be sent.
@@ -66,7 +66,7 @@ class ConnectionManager(object):
         send_message(self.socket, signed)
         return True
 
-    def receive_bytes(self):
+    def receive_bytes_secure(self):
         """
         Waits for data to be read then decrypts it and verifies the sender.
         :return: The decrypted data or None if the decryption or verification failed, or no data was received.

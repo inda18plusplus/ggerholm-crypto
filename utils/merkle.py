@@ -45,9 +45,13 @@ class MerkleTree(object):
         The file_id decides the position of the leaf node.
         :param file: A File-object with a valid ID.
         """
-        node = TreeNode(None, None, bytes(file.data, encoding='utf-8'))
-        self.foundation[file.file_id] = node
-        self.update(file)
+        try:
+            node = TreeNode(None, None, bytes(file.data, encoding='utf-8'))
+            self.foundation[file.file_id] = node
+            self.update(file)
+            return True
+        except IndexError:
+            return False
 
     def get_structure_with_file(self, file, clear_file_hash=False):
         """
