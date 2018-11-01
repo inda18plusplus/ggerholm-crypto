@@ -34,8 +34,8 @@ class Server(ConnectionManager):
         self.merkle_tree = MerkleTree()
         self.merkle_tree.build()
 
-        self.certificate = read_certificate('server_secret.txt')
-        self.client_certificate = read_certificate('client_secret.txt')
+        self.secret = read_certificate('server_secret.txt')
+        self.client_secret = read_certificate('client_secret.txt')
 
     def start(self):
         thread = Thread(target=self.run_thread)
@@ -91,7 +91,7 @@ class Server(ConnectionManager):
             return False
 
         client_certificate = client_certificate.decode('utf-8')
-        if client_certificate != self.client_certificate:
+        if client_certificate != self.client_secret:
             self.socket.close()
             print('Server: Client certificate invalid.')
             return False
@@ -99,7 +99,7 @@ class Server(ConnectionManager):
         # Send our verification hex
         send_message(self.socket, self.verify_key_hex)
         # Send our signed certificate
-        signed = sign(self._signing_key, bytes(self.certificate, encoding='utf-8'))
+        signed = sign(self._signing_key, bytes(self.secret, encoding='utf-8'))
         send_message(self.socket, signed)
 
         return True

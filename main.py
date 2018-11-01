@@ -3,7 +3,7 @@ from network.server import run_server
 from utils.file import generate_certificate
 
 
-def setup_certificates():
+def create_secrets():
     generate_certificate('server_secret.txt', 'SuperSecretThingThatCantBeGuessed')
     generate_certificate('client_secret.txt', 'TjahoTjahojDetHärÄrJuSkoj')
 

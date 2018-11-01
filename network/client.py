@@ -55,8 +55,8 @@ class Client(ConnectionManager):
         super().__init__(use_default_ssl)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        self.certificate = read_certificate('client_secret.txt')
-        self.server_certificate = read_certificate('server_secret.txt')
+        self.secret = read_certificate('client_secret.txt')
+        self.server_secret = read_certificate('server_secret.txt')
 
     def start(self, host_ip='localhost', port=12317):
         self.connected = self.connect_to_host(host_ip, port)
@@ -89,7 +89,7 @@ class Client(ConnectionManager):
         # Send our verification hex
         send_message(self.socket, self.verify_key_hex)
         # Send our signed certificate
-        signed = sign(self._signing_key, bytes(self.certificate, encoding='utf-8'))
+        signed = sign(self._signing_key, bytes(self.secret, encoding='utf-8'))
         send_message(self.socket, signed)
 
         # Receive the server's verification hex
@@ -108,7 +108,7 @@ class Client(ConnectionManager):
             return False
 
         server_certificate = server_certificate.decode('utf-8')
-        if server_certificate != self.server_certificate:
+        if server_certificate != self.server_secret:
             self.disconnect()
             print('Client: Server certificate invalid.')
             return False
