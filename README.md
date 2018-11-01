@@ -4,7 +4,7 @@ A simple client - server setup focused on secure communication.<br>
 
 ### Key Features
  - Send / receive files using both the client and the server.
- - File verification using Merkle-trees (though it's useless in this app because both the server and client got access to the decrypted file).
+ - File verification using Merkle-trees.
  - The server is limited to one client. (It's a feature)
  - The client and server secret files have to be contained within each distribution. (Also a feature)
 
