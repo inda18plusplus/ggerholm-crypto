@@ -10,7 +10,7 @@ from nacl.public import Box, PublicKey
 from network.request import Request, request_to_json
 from network.socket_protocol import send_message, receive_message, ConnectionManager
 from utils.crypto import generate_keys, sign, verify_sender
-from utils.file import File, file_from_json, file_to_json, read_certificate
+from utils.file import File, file_from_json, file_to_json, read_secret
 from utils.merkle import get_root_hash
 
 
@@ -55,8 +55,8 @@ class Client(ConnectionManager):
         super().__init__(use_default_ssl)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        self.secret = read_certificate('client_secret.txt')
-        self.server_secret = read_certificate('server_secret.txt')
+        self.secret = read_secret('client_secret.txt')
+        self.server_secret = read_secret('server_secret.txt')
 
     def start(self, host_ip='localhost', port=12317):
         self.connected = self.connect_to_host(host_ip, port)
@@ -71,8 +71,8 @@ class Client(ConnectionManager):
         if self.default_ssl:
             context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
             context.verify_mode = ssl.CERT_REQUIRED
-            context.load_verify_locations('certificates/server.pem')
-            context.load_cert_chain(certfile='certificates/client.pem', keyfile='certificates/client.key')
+            context.load_verify_locations('secrets/server.pem')
+            context.load_cert_chain(certfile='secrets/client.pem', keyfile='secrets/client.key')
 
             if ssl.HAS_SNI:
                 self.socket = context.wrap_socket(self.socket, server_side=False, server_hostname=host)
@@ -99,18 +99,18 @@ class Client(ConnectionManager):
             return False
         self._connection_verify_key = nacl.signing.VerifyKey(server_key_hex, encoder=HexEncoder)
 
-        # Verify that both the server certificate and verification key arrived unchanged
-        server_certificate = receive_message(self.socket)
-        server_certificate = verify_sender(self._connection_verify_key, server_certificate)
-        if not server_certificate:
+        # Verify that both the server password and verification key arrived unchanged
+        server_secret = receive_message(self.socket)
+        server_secret = verify_sender(self._connection_verify_key, server_secret)
+        if not server_secret:
             self.disconnect()
-            print('Client: Server certificate or key tampered with.')
+            print('Client: Server password or key tampered with.')
             return False
 
-        server_certificate = server_certificate.decode('utf-8')
-        if server_certificate != self.server_secret:
+        server_secret = server_secret.decode('utf-8')
+        if server_secret != self.server_secret:
             self.disconnect()
-            print('Client: Server certificate invalid.')
+            print('Client: Server password invalid.')
             return False
 
         return True
@@ -193,12 +193,14 @@ class Client(ConnectionManager):
         file = file_from_json(file_json.decode('utf-8'))
         hash_structure = self.receive_bytes_secure()
         if not hash_structure:
+            print('NO hash')
             return None
 
         provided_root_hash = get_root_hash(hash_structure, file)
         if not self._latest_top_hash:
             self._latest_top_hash = provided_root_hash
         elif self._latest_top_hash != provided_root_hash:
+            print('WRONG')
             return None
 
         return file

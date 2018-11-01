@@ -22,6 +22,7 @@ def get_root_hash(structure_json, file):
     :param file: The file whose hash is to be used.
     :return: The root hash of the merkle tree.
     """
+    print(structure_json)
     structure = node_from_json(structure_json)
 
     tree = MerkleTree()
@@ -118,7 +119,7 @@ class MerkleTree(object):
             width /= 2
 
         nodes[-1].node_hash = hash_sha256(bytes(file.data, encoding='utf-8'))
-        for i in reversed(range(0, len(nodes) - 2)):
+        for i in reversed(range(0, len(nodes) - 1)):
             nodes[i].node_hash = None
             nodes[i].fix_hash()
 

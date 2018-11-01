@@ -11,7 +11,7 @@ from nacl.utils import random
 from network.request import request_from_json
 from network.socket_protocol import receive_message, send_message, ConnectionManager
 from utils.crypto import generate_keys, verify_sender, sign
-from utils.file import file_from_json, file_to_json, read_certificate
+from utils.file import file_from_json, file_to_json, read_secret
 from utils.merkle import MerkleTree, node_to_json
 
 
@@ -34,8 +34,8 @@ class Server(ConnectionManager):
         self.merkle_tree = MerkleTree()
         self.merkle_tree.build()
 
-        self.secret = read_certificate('server_secret.txt')
-        self.client_secret = read_certificate('client_secret.txt')
+        self.secret = read_secret('server_secret.txt')
+        self.client_secret = read_secret('client_secret.txt')
 
     def start(self):
         thread = Thread(target=self.run_thread)
@@ -65,8 +65,8 @@ class Server(ConnectionManager):
         if self.default_ssl:
             context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
             context.verify_mode = ssl.CERT_REQUIRED
-            context.load_verify_locations('certificates/client.pem')
-            context.load_cert_chain(certfile='certificates/server.pem', keyfile='certificates/server.key')
+            context.load_verify_locations('secrets/client.pem')
+            context.load_cert_chain(certfile='secrets/server.pem', keyfile='secrets/server.key')
 
             self.socket = context.wrap_socket(self.socket, server_side=True)
             cert = self.socket.getpeercert()
@@ -82,18 +82,18 @@ class Server(ConnectionManager):
             return False
         self._connection_verify_key = VerifyKey(client_key_hex, encoder=HexEncoder)
 
-        # Verify that both the key and the certificate arrived unchanged
-        client_certificate = receive_message(self.socket)
-        client_certificate = verify_sender(self._connection_verify_key, client_certificate)
-        if not client_certificate:
+        # Verify that both the key and the secret/password arrived unchanged
+        client_secret = receive_message(self.socket)
+        client_secret = verify_sender(self._connection_verify_key, client_secret)
+        if not client_secret:
             self.socket.close()
-            print('Server: Client certificate or key tampered with.')
+            print('Server: Client password or key tampered with.')
             return False
 
-        client_certificate = client_certificate.decode('utf-8')
-        if client_certificate != self.client_secret:
+        client_secret = client_secret.decode('utf-8')
+        if client_secret != self.client_secret:
             self.socket.close()
-            print('Server: Client certificate invalid.')
+            print('Server: Client password invalid.')
             return False
 
         # Send our verification hex
@@ -180,12 +180,17 @@ class Server(ConnectionManager):
             return False
         if not self.merkle_tree.insert_file(file):
             return False
-        self.files.append(file)
+        prev_entry = next((f for f in self.files if f.file_id == file.file_id), None)
+        if prev_entry:
+            prev_entry.data = file.data
+        else:
+            self.files.append(file)
 
         print('Server: Received ', file.__dict__)
 
         hash_structure = self.merkle_tree.get_structure_with_file(file, True)
         structure_json = node_to_json(hash_structure)
+        print('SERVER: ',node_to_json(self.merkle_tree.root_node))
         self.send_bytes_secure(bytes(structure_json, encoding='utf-8'))
         return True
 
