@@ -21,16 +21,13 @@ def run_client(default_ssl_impl=False):
     print('Ready to serve:')
     while client.connected:
         cmd = input('> ')
-        if len(cmd) == 0:
-            client.disconnect()
-            break
         tokens = cmd.split(' ')
         try:
-            if tokens[0] == 'exit':
+            if len(cmd) == 0 or tokens[0] == 'exit':
                 client.exit()
             elif tokens[0] == 'send':
                 fid = int(tokens[1])
-                data = ' '.join(tokens[2:])
+                data = str(' '.join(tokens[2:]))
                 if len(data) == 0:
                     print('No data provided.')
                     continue

@@ -1,6 +1,7 @@
 # Secure Client - Server Communication
 
 A simple client - server setup focused on secure communication.<br>
+Using Python 3.6.
 
 ### Key Features
  - Send / receive files using both the client and the server.
@@ -13,3 +14,8 @@ A simple client - server setup focused on secure communication.<br>
  - Ed25519 for signatures.
  - Salsa20 for encryption along with Poly1305 MAC for authentication.
  - Curve25519 for the initial public / private keys used while securing communication.
+
+### Commands
+ - send *file_id* *text* (e.g. 'send 4 Hello World!')
+ - get *file_id*
+ - exit
