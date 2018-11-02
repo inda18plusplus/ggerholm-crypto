@@ -193,14 +193,13 @@ class Client(ConnectionManager):
         file = file_from_json(file_json.decode('utf-8'))
         hash_structure = self.receive_bytes_secure()
         if not hash_structure:
-            print('NO hash')
             return None
 
         provided_root_hash = get_root_hash(hash_structure, file)
         if not self._latest_top_hash:
             self._latest_top_hash = provided_root_hash
         elif self._latest_top_hash != provided_root_hash:
-            print('WRONG')
+            print('Merkle verification failed.')
             return None
 
         return file

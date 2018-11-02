@@ -22,7 +22,6 @@ def get_root_hash(structure_json, file):
     :param file: The file whose hash is to be used.
     :return: The root hash of the merkle tree.
     """
-    print(structure_json)
     structure = node_from_json(structure_json)
 
     tree = MerkleTree()

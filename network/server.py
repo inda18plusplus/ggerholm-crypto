@@ -190,7 +190,6 @@ class Server(ConnectionManager):
 
         hash_structure = self.merkle_tree.get_structure_with_file(file, True)
         structure_json = node_to_json(hash_structure)
-        print('SERVER: ',node_to_json(self.merkle_tree.root_node))
         self.send_bytes_secure(bytes(structure_json, encoding='utf-8'))
         return True
 
