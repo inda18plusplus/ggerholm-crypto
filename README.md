@@ -1,7 +1,7 @@
 # Secure Client - Server Communication
 
 A simple client - server setup focused on secure communication.<br>
-Using Python 3.6. Only tested on Windows 10.
+Using Python 3.6.
 
 ### Key Features
  - Send / receive files using both the client and the server.
@@ -16,12 +16,14 @@ Using Python 3.6. Only tested on Windows 10.
  - Curve25519 for the initial public / private keys used while securing communication.
 
 ### Running
- - Download / clone the repository.
- - Create a virtualenv.
- - Install the *requirements.txt* packages.
- - Activate the virtualenv and run *main.py* or *server.py* and then *client.py* in different terminals to keep it clean.
+ 1. Download / clone the repository.
+ 1. Create a virtualenv and activate it.
+ 1. Install the *requirements.txt* packages.
+ 1. Run *main.py* to start all required services or *server.py* and then *client.py* in different terminals to keep it clean.
 
 ### Commands
- - send *file_id* *text* (e.g. 'send 4 Hello World!')
- - get *file_id*
- - exit
+Syntax | Example
+------ | -------
+__send__ *file_id* *text* | __send__ 4 Hello World!
+__get__ *file_id* | __get__ 4
+__exit__ | __exit__
