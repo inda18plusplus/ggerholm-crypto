@@ -3,9 +3,9 @@ from network.server import run_server
 
 
 def create_secrets():
-    with open('secrets/server_secret.txt', 'w') as f:
+    with open('secrets/server_secret.txt', 'w', encoding='utf-8') as f:
         f.write('SuperSecretThingThatCantBeGuessed')
-    with open('secrets/client_secret.txt', 'w') as f:
+    with open('secrets/client_secret.txt', 'w', encoding='utf-8') as f:
         f.write('TjahoTjahojDetHärÄrJuSkoj')
 
 
