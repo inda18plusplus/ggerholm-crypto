@@ -1,7 +1,7 @@
 # Secure Client - Server Communication
 
 A simple client - server setup focused on secure communication.<br>
-Using Python 3.6.
+Using Python 3.6. Only tested on Windows 10.
 
 ### Key Features
  - Send / receive files using both the client and the server.
@@ -14,6 +14,12 @@ Using Python 3.6.
  - Ed25519 for signatures.
  - Salsa20 for encryption along with Poly1305 MAC for authentication.
  - Curve25519 for the initial public / private keys used while securing communication.
+
+### Running
+ - Download / clone the repository.
+ - Create a virtualenv.
+ - Install the *requirements.txt* packages.
+ - Activate the virtualenv and run *main.py*.
 
 ### Commands
  - send *file_id* *text* (e.g. 'send 4 Hello World!')
