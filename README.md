@@ -19,7 +19,7 @@ Using Python 3.6. Only tested on Windows 10.
  - Download / clone the repository.
  - Create a virtualenv.
  - Install the *requirements.txt* packages.
- - Activate the virtualenv and run *main.py*.
+ - Activate the virtualenv and run *main.py* or *server.py* and then *client.py* in different terminals to keep it clean.
 
 ### Commands
  - send *file_id* *text* (e.g. 'send 4 Hello World!')

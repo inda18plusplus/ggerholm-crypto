@@ -1,5 +1,7 @@
-from network.client import run_client
-from network.server import run_server
+import time
+
+from client import run_client
+from server import run_server
 
 
 def create_secrets():
@@ -11,4 +13,5 @@ def create_secrets():
 
 if __name__ == '__main__':
     run_server(False)
+    time.sleep(0.1)
     run_client(False)

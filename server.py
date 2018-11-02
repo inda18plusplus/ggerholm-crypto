@@ -18,14 +18,11 @@ from utils.merkle import MerkleTree, node_to_json
 def run_server(default_ssl_impl=False):
     server = Server(default_ssl_impl)
     server.start()
-    while not server.listening:
-        pass
 
 
 class Server(ConnectionManager):
     files = []
     keep_alive = True
-    listening = False
 
     def __init__(self, use_default_ssl=False, ip_address='127.0.0.1', port=12317):
         super().__init__(use_default_ssl)
@@ -46,7 +43,6 @@ class Server(ConnectionManager):
         thread.start()
 
     def run_thread(self):
-        self.listening = True
         self.connected = self.accept_connection()
         if not self.connected:
             return
@@ -203,4 +199,4 @@ class Server(ConnectionManager):
 
 
 if __name__ == '__main__':
-    run_server()
+    run_server(False)
