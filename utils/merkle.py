@@ -24,7 +24,7 @@ def get_root_hash(structure_json, file):
     """
     structure = node_from_json(structure_json)
 
-    tree = MerkleTree()
+    tree = MerkleTree(16, False)
     tree.root_node = structure
     validation_node = tree.get_structure_with_file(file, False)
     validation_node.fix_hash()
@@ -33,11 +33,12 @@ def get_root_hash(structure_json, file):
 
 class MerkleTree(object):
     root_node = None
+    foundation = []
 
-    def __init__(self, foundation_length=16):
-        self.foundation = []
-        for i in range(0, foundation_length):
-            self.foundation.append(TreeNode())
+    def __init__(self, width=16, create_initial_nodes=True):
+        self.width = width
+        if create_initial_nodes:
+            self.foundation = list([TreeNode() for _ in range(width)])
 
     def insert_file(self, file: 'File'):
         """
@@ -62,7 +63,7 @@ class MerkleTree(object):
         :return: The root node of the newly created tree.
         """
         left_margin = 0
-        width = len(self.foundation)
+        width = self.width
         real_node = self.root_node
         node = TreeNode()
         root_node = node
@@ -104,23 +105,21 @@ class MerkleTree(object):
         :param file: A File-object with a valid ID.
         """
         left_margin = 0
-        width = len(self.foundation)
+        width = self.width
         node = self.root_node
-        nodes = [self.root_node]
         while width > 1:
             if file.file_id >= left_margin + width / 2:
-                nodes.append(node.right_child)
                 node = node.right_child
+                node.node_hash = None
                 left_margin += width / 2
             else:
-                nodes.append(node.left_child)
                 node = node.left_child
+                node.node_hash = None
             width /= 2
 
-        nodes[-1].node_hash = hash_sha256(bytes(file.data, encoding='utf-8'))
-        for i in reversed(range(0, len(nodes) - 1)):
-            nodes[i].node_hash = None
-            nodes[i].fix_hash()
+        node.node_hash = hash_sha256(bytes(file.data, encoding='utf-8'))
+        self.root_node.node_hash = None
+        self.root_node.fix_hash()
 
     def build(self):
         """

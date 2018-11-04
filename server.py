@@ -15,7 +15,7 @@ from utils.file import file_from_json, file_to_json, read_secret
 from utils.merkle import MerkleTree, node_to_json
 
 
-def run_server(default_ssl_impl=False):
+def run_server(default_ssl_impl=True):
     server = Server(default_ssl_impl)
     server.start()
 
@@ -34,6 +34,7 @@ class Server(ConnectionManager):
 
         self.merkle_tree = MerkleTree()
         self.merkle_tree.build()
+        self.files = list([None for _ in range(0, 16)])
 
         self.secret = read_secret('server_secret.txt')
         self.client_secret = read_secret('client_secret.txt')
@@ -164,8 +165,11 @@ class Server(ConnectionManager):
         if not self.connected:
             return False
 
-        file = next((file for file in self.files if file.file_id == file_id), None)
-        if not file:
+        try:
+            file = self.files[file_id]
+            if not file:
+                return False
+        except IndexError:
             return False
 
         hash_structure = self.merkle_tree.get_structure_with_file(file, True)
@@ -181,11 +185,7 @@ class Server(ConnectionManager):
             return False
         if not self.merkle_tree.insert_file(file):
             return False
-        prev_entry = next((f for f in self.files if f.file_id == file.file_id), None)
-        if prev_entry:
-            prev_entry.data = file.data
-        else:
-            self.files.append(file)
+        self.files[file.file_id] = file
 
         print('Server: Received ', file.__dict__)
 
@@ -199,4 +199,4 @@ class Server(ConnectionManager):
 
 
 if __name__ == '__main__':
-    run_server(False)
+    run_server()

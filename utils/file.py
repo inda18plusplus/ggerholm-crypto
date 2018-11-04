@@ -13,7 +13,12 @@ def read_secret(filename):
 
 
 def _json_object_hook(data):
-    return File(data['file_id'], data['data'])
+    try:
+        file_id = int(data['file_id'])
+        data = str(data['data'])
+        return File(file_id, data)
+    except ValueError:
+        raise
 
 
 def file_from_json(data):

@@ -14,7 +14,7 @@ from utils.file import File, file_from_json, file_to_json, read_secret
 from utils.merkle import get_root_hash
 
 
-def run_client(default_ssl_impl=False):
+def run_client(default_ssl_impl=True):
     client = Client(default_ssl_impl)
     client.start()
 
@@ -35,7 +35,10 @@ def run_client(default_ssl_impl=False):
             elif tokens[0] == 'get':
                 fid = int(tokens[1])
                 result = client.request_file(fid)
-                print(result.data if result else 'No data received.')
+                if result and result.file_id != fid:
+                    print('Incorrect file received.')
+                else:
+                    print(result.data if result else 'No data received.')
             else:
                 print('Command not recognized.')
         except ValueError:
@@ -85,7 +88,7 @@ class Client(ConnectionManager):
 
         # Send our verification hex
         send_message(self.socket, self.verify_key_hex)
-        # Send our signed certificate
+        # Send our signed secret
         signed = sign(self._signing_key, bytes(self.secret, encoding='utf-8'))
         send_message(self.socket, signed)
 
@@ -203,4 +206,4 @@ class Client(ConnectionManager):
 
 
 if __name__ == '__main__':
-    run_client(False)
+    run_client()

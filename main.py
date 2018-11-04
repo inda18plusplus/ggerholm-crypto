@@ -12,6 +12,6 @@ def create_secrets():
 
 
 if __name__ == '__main__':
-    run_server(False)
+    run_server()
     time.sleep(0.1)
-    run_client(False)
+    run_client()
