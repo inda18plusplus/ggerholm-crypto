@@ -1,4 +1,3 @@
-import copy
 import json
 
 from utils.crypto import hash_sha256
@@ -68,16 +67,13 @@ class MerkleTree(object):
         node = TreeNode()
         root_node = node
         while width > 1:
-            node.node_hash = None
-            node.left_child = copy.deepcopy(real_node.left_child)
-            node.right_child = copy.deepcopy(real_node.right_child)
-
             # Because the tree is binary and the file ID corresponds to its leaf node's position
             # it can be decided whether the leaf node is to the left or right by comparing
             # the file ID with the remaining tree width.
             if file.file_id >= left_margin + width / 2:
                 node.left_child = TreeNode()
                 node.left_child.node_hash = real_node.left_child.node_hash
+                node.right_child = TreeNode()
                 node = node.right_child
                 real_node = real_node.right_child
                 # If the leaf node is to the right then half of the tree downwards is to the left,
@@ -86,6 +82,7 @@ class MerkleTree(object):
             else:
                 node.right_child = TreeNode()
                 node.right_child.node_hash = real_node.right_child.node_hash
+                node.left_child = TreeNode()
                 node = node.left_child
                 real_node = real_node.left_child
 

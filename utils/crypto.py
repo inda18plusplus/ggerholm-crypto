@@ -12,8 +12,7 @@ def hash_sha256(data: bytes):
 
 def encrypt(secret_box: SecretBox, data: bytes):
     encrypted = secret_box.encrypt(data)
-    if len(encrypted) != len(data) + secret_box.NONCE_SIZE + secret_box.MACBYTES:
-        return None
+    assert len(encrypted) != len(data) + secret_box.NONCE_SIZE + secret_box.MACBYTES
     return encrypted
 
 
