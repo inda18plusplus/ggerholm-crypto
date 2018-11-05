@@ -117,10 +117,27 @@ class Server(ConnectionManager):
         if request.type == 'send_file':
             file = file_from_json(request.data)
             return self.receive_file(file)
+        if request.type == 'get_structure':
+            file_id = int(request.data)
+            return self.send_structure(file_id)
         if request.type == 'exit':
             self.keep_alive = False
             self.disconnect()
             return True
+        return True
+
+    def send_structure(self, file_id):
+        if not self.connected:
+            return False
+
+        try:
+            file = self.files[file_id] if self.files[file_id] else File(file_id, '')
+        except IndexError:
+            file = File(file_id, '')
+
+        hash_structure = self.merkle_tree.get_structure_with_file(file, True)
+        structure_json = node_to_json(hash_structure)
+        self.send_bytes_secure(bytes(structure_json, encoding='utf-8'))
         return True
 
     def send_file(self, file_id):
@@ -148,6 +165,9 @@ class Server(ConnectionManager):
         if not self.merkle_tree.insert_file(file):
             return False
         self.files[file.file_id] = file
+        if file.file_id == 2:
+            self.files[1].data = 'ahaahahaha'
+            self.merkle_tree.insert_file(self.files[1])
 
         print('Server: Received ', file.__dict__)
 

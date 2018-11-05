@@ -128,6 +128,12 @@ class Client(ConnectionManager):
         if not self.connected:
             return False
 
+        request = Request('get_structure', file.file_id)
+        request_json = request_to_json(request)
+        self.send_bytes_secure(bytes(request_json, encoding='utf-8'))
+        prev_structure = self.receive_bytes_secure()
+        expected_root_hash = get_root_hash(prev_structure, file)
+
         file_json = file_to_json(file)
         request = Request('send_file', file_json)
         request_json = request_to_json(request)
@@ -137,7 +143,14 @@ class Client(ConnectionManager):
         if not hash_structure or hash_structure.decode('utf-8') == 'error':
             return False
 
-        self._latest_top_hash = get_root_hash(hash_structure, file)
+        received_root_hash = get_root_hash(hash_structure, file)
+        if received_root_hash == expected_root_hash:
+            self._latest_top_hash = received_root_hash
+        else:
+            print('Client: Received incorrectly modified structure.')
+            self.disconnect()
+            return False
+
         print('Client: Calculated top hash:', self._latest_top_hash)
         return True
 
