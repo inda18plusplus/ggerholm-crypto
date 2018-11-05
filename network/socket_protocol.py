@@ -2,7 +2,7 @@ import struct
 
 from nacl.secret import SecretBox
 
-from utils.crypto import decrypt, verify_sender, sign, encrypt, generate_signing_keys
+from utils.crypto import decrypt, verify_sender, sign, encrypt
 
 
 def pack_data(data):
@@ -38,9 +38,9 @@ class ConnectionManager(object):
     socket = None
     _secret_box = None
     _connection_verify_key = None
+    _signing_key = None
 
     def __init__(self, use_default_ssl=False):
-        self._signing_key, self.verify_key_hex = generate_signing_keys()
         self.default_ssl = use_default_ssl
 
     def _set_secret_key(self, key):
@@ -60,8 +60,6 @@ class ConnectionManager(object):
             return True
 
         encrypted = encrypt(self._secret_box, data)
-        if not encrypted:
-            return False
         signed = sign(self._signing_key, encrypted)
         send_message(self.socket, signed)
         return True

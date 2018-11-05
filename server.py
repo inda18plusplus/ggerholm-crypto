@@ -3,15 +3,15 @@ import ssl
 from threading import Thread
 
 from nacl.encoding import HexEncoder
-from nacl.public import Box, PublicKey
+from nacl.public import Box, PublicKey, PrivateKey
 from nacl.secret import SecretBox
-from nacl.signing import VerifyKey
+from nacl.signing import VerifyKey, SigningKey
 from nacl.utils import random
 
 from network.request import request_from_json
-from network.socket_protocol import receive_message, send_message, ConnectionManager
-from utils.crypto import generate_keys, verify_sender, sign
-from utils.file import file_from_json, file_to_json, read_secret
+from network.socket_protocol import send_message, ConnectionManager
+from utils.crypto import sign
+from utils.file import file_from_json, file_to_json, read_verification_key, read_encryption_key
 from utils.merkle import MerkleTree, node_to_json
 
 
@@ -36,8 +36,8 @@ class Server(ConnectionManager):
         self.merkle_tree.build()
         self.files = list([None for _ in range(0, 16)])
 
-        self.secret = read_secret('server_secret.txt')
-        self.client_secret = read_secret('client_secret.txt')
+        self._signing_key = SigningKey(read_verification_key('server', 'sign'), encoder=HexEncoder)
+        self._connection_verify_key = VerifyKey(read_verification_key('client', 'verify'), encoder=HexEncoder)
 
     def start(self):
         thread = Thread(target=self.run_thread)
@@ -64,45 +64,19 @@ class Server(ConnectionManager):
         self.socket, address = self.server_socket.accept()
         print('Server: Client connected from', address)
 
-        if self.default_ssl:
-            context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
-            context.verify_mode = ssl.CERT_REQUIRED
-            context.load_verify_locations('secrets/client.pem')
-            context.load_cert_chain(certfile='secrets/server.pem', keyfile='secrets/server.key')
-
-            self.socket = context.wrap_socket(self.socket, server_side=True)
-            cert = self.socket.getpeercert()
-            if not cert or ('commonName', 'Saturn') not in cert['subject'][5]:
-                self.disconnect()
-                return False
+        if not self.default_ssl:
             return True
 
-        # Receive the client's verification hex
-        client_key_hex = receive_message(self.socket)
-        if not client_key_hex:
-            self.socket.close()
-            return False
-        self._connection_verify_key = VerifyKey(client_key_hex, encoder=HexEncoder)
+        context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+        context.verify_mode = ssl.CERT_REQUIRED
+        context.load_verify_locations('secrets/ssl/client.pem')
+        context.load_cert_chain(certfile='secrets/ssl/server.pem', keyfile='secrets/ssl/server.key')
 
-        # Verify that both the key and the secret/password arrived unchanged
-        client_secret = receive_message(self.socket)
-        client_secret = verify_sender(self._connection_verify_key, client_secret)
-        if not client_secret:
-            self.socket.close()
-            print('Server: Client password or key tampered with.')
+        self.socket = context.wrap_socket(self.socket, server_side=True)
+        cert = self.socket.getpeercert()
+        if not cert or ('commonName', 'Saturn') not in cert['subject'][5]:
+            self.disconnect()
             return False
-
-        client_secret = client_secret.decode('utf-8')
-        if client_secret != self.client_secret:
-            self.socket.close()
-            print('Server: Client password invalid.')
-            return False
-
-        # Send our verification hex
-        send_message(self.socket, self.verify_key_hex)
-        # Send our signed certificate
-        signed = sign(self._signing_key, bytes(self.secret, encoding='utf-8'))
-        send_message(self.socket, signed)
 
         return True
 
@@ -110,22 +84,9 @@ class Server(ConnectionManager):
         if not self.connected or self.default_ssl:
             return False
 
-        # Generate our private / public key pair
-        private_key, public_key = generate_keys()
-        public_key = public_key.encode(encoder=HexEncoder)
-        print('Server: Keys generated.')
-
-        # Receive the client's public key
-        client_public_key = receive_message(self.socket)
-        client_public_key = verify_sender(self._connection_verify_key, client_public_key)
-        if not client_public_key:
-            return False
-        client_public_key = PublicKey(client_public_key, encoder=HexEncoder)
-        print('Server: Client public key received.')
-
-        # Send our public key to the client
-        send_message(self.socket, sign(self._signing_key, public_key))
-        print('Server: Public key sent.')
+        private_key = PrivateKey(read_encryption_key('server', 'private'), encoder=HexEncoder)
+        client_public_key = PublicKey(read_encryption_key('client', 'public'), encoder=HexEncoder)
+        print('Server: Keys loaded.')
 
         # Create a secret key and send it to the client
         box = Box(private_key, client_public_key)
