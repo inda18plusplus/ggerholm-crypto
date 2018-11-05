@@ -10,20 +10,14 @@ def hash_sha256(data: bytes):
     return sha256(data, encoder=HexEncoder)
 
 
-def encrypt(secret_box: SecretBox, data: bytes, encoder=None):
-    if encoder:
-        encrypted = secret_box.encrypt(data, encoder=encoder)
-    else:
-        encrypted = secret_box.encrypt(data)
-        assert len(encrypted) == len(data) + secret_box.NONCE_SIZE + secret_box.MACBYTES
+def encrypt(secret_box: SecretBox, data: bytes):
+    encrypted = secret_box.encrypt(data)
+    assert len(encrypted) == len(data) + secret_box.NONCE_SIZE + secret_box.MACBYTES
     return encrypted
 
 
-def decrypt(secret_box: SecretBox, data: bytes, encoder=None):
-    if encoder:
-        encrypted = secret_box.decrypt(data, encoder=encoder)
-    else:
-        encrypted = secret_box.decrypt(data)
+def decrypt(secret_box: SecretBox, data: bytes):
+    encrypted = secret_box.decrypt(data)
     return encrypted
 
 

@@ -9,7 +9,7 @@ from nacl.utils import random
 
 from network.request import Request, request_to_json
 from network.socket_protocol import receive_message, ConnectionManager
-from utils.crypto import verify_sender, encrypt, decrypt
+from utils.crypto import verify_sender
 from utils.file import File, file_from_json, file_to_json, read_encryption_key, read_verification_key
 from utils.merkle import get_root_hash
 
@@ -32,7 +32,7 @@ def run_client(default_ssl_impl=True):
                 if len(data) == 0:
                     print('No data provided.')
                     continue
-                encrypted_data = encrypt(secret_box, bytes(data, encoding='utf-8'), encoder=HexEncoder)
+                encrypted_data = secret_box.encrypt(bytes(data, encoding='utf-8'), encoder=HexEncoder)
                 client.send_file(File(fid, encrypted_data.decode('utf-8')))
             elif tokens[0] == 'get':
                 fid = int(tokens[1])
@@ -40,7 +40,7 @@ def run_client(default_ssl_impl=True):
                 if result and result.file_id != fid:
                     print('Incorrect file received.')
                 elif result:
-                    decrypted = decrypt(secret_box, bytes(result.data, encoding='utf-8'), encoder=HexEncoder)
+                    decrypted = secret_box.decrypt(bytes(result.data, encoding='utf-8'), encoder=HexEncoder)
                     print(decrypted.decode('utf-8'))
                 else:
                     print('No data received.')

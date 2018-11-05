@@ -1,6 +1,7 @@
 import socket
 import ssl
 from threading import Thread
+from typing import List
 
 from nacl.encoding import HexEncoder
 from nacl.public import Box, PublicKey, PrivateKey
@@ -11,7 +12,7 @@ from nacl.utils import random
 from network.request import request_from_json
 from network.socket_protocol import send_message, ConnectionManager
 from utils.crypto import sign
-from utils.file import file_from_json, file_to_json, read_verification_key, read_encryption_key
+from utils.file import file_from_json, file_to_json, read_verification_key, read_encryption_key, File
 from utils.merkle import MerkleTree, node_to_json
 
 
@@ -21,7 +22,7 @@ def run_server(default_ssl_impl=True):
 
 
 class Server(ConnectionManager):
-    files = []
+    files: List['File'] = []
     keep_alive = True
 
     def __init__(self, use_default_ssl=False, ip_address='127.0.0.1', port=12317):
