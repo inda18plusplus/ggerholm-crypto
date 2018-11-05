@@ -165,9 +165,6 @@ class Server(ConnectionManager):
         if not self.merkle_tree.insert_file(file):
             return False
         self.files[file.file_id] = file
-        if file.file_id == 2:
-            self.files[1].data = 'ahaahahaha'
-            self.merkle_tree.insert_file(self.files[1])
 
         print('Server: Received ', file.__dict__)
 
