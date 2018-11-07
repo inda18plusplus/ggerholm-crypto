@@ -140,7 +140,7 @@ class Server(ConnectionManager):
         self.send_bytes_secure(bytes(structure_json, encoding='utf-8'))
         return True
 
-    def send_file(self, file_id):
+    def send_file(self, file_id: int):
         if not self.connected:
             return False
 
@@ -159,7 +159,7 @@ class Server(ConnectionManager):
         self.send_bytes_secure(bytes(structure_json, encoding='utf-8'))
         return True
 
-    def receive_file(self, file):
+    def receive_file(self, file: 'File'):
         if not self.connected:
             return False
         if not self.merkle_tree.insert_file(file):
