@@ -135,7 +135,7 @@ class Server(ConnectionManager):
         except IndexError:
             file = File(file_id, '')
 
-        hash_structure = self.merkle_tree.get_structure_with_file(file, True)
+        hash_structure = self.merkle_tree.get_structure_with_file(file)
         structure_json = node_to_json(hash_structure)
         self.send_bytes_secure(bytes(structure_json, encoding='utf-8'))
         return True
@@ -151,10 +151,10 @@ class Server(ConnectionManager):
         except IndexError:
             return False
 
-        hash_structure = self.merkle_tree.get_structure_with_file(file, True)
-
         file_json = file_to_json(file)
         self.send_bytes_secure(bytes(file_json, encoding='utf-8'))
+
+        hash_structure = self.merkle_tree.get_structure_with_file(file)
         structure_json = node_to_json(hash_structure)
         self.send_bytes_secure(bytes(structure_json, encoding='utf-8'))
         return True
@@ -168,7 +168,7 @@ class Server(ConnectionManager):
 
         print('Server: Received ', file.__dict__)
 
-        hash_structure = self.merkle_tree.get_structure_with_file(file, True)
+        hash_structure = self.merkle_tree.get_structure_with_file(file)
         structure_json = node_to_json(hash_structure)
         self.send_bytes_secure(bytes(structure_json, encoding='utf-8'))
         return True

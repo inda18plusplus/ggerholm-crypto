@@ -13,19 +13,20 @@ def node_to_json(node):
     return json.dumps(node.flatten())
 
 
-def get_root_hash(structure_json, file):
+def get_root_hash(structure_json, file, replace_hash):
     """
     Calculates the root hash of the provided structure with the provided
     file included.
     :param structure_json: The structure of a minimal tree in JSON.
     :param file: The file whose hash is to be used.
+    :param replace_hash: If the hash of the provided file should be used instead of the already present hash.
     :return: The root hash of the merkle tree.
     """
     structure = node_from_json(structure_json)
 
     tree = MerkleTree(16, False)
     tree.root_node = structure
-    validation_node = tree.get_structure_with_file(file, False)
+    validation_node = tree.get_structure_with_file(file, replace_hash)
     validation_node.fix_hash()
     return validation_node.node_hash
 
@@ -53,12 +54,12 @@ class MerkleTree(object):
         except IndexError:
             return False
 
-    def get_structure_with_file(self, file, clear_file_hash=False):
+    def get_structure_with_file(self, file, replace_file_hash=False):
         """
         Creates a tree structure with only the nodes that are required for the provided file to be
         verifiable.
         :param file: The file whose hash has to be included in the tree.
-        :param clear_file_hash: If the file hash should be cleared out.
+        :param replace_file_hash: If the hash in the structure should be replaced with the hash of the provided file.
         :return: The root node of the newly created tree.
         """
         left_margin = 0
@@ -89,10 +90,10 @@ class MerkleTree(object):
             # Each step splits the tree in half
             width /= 2
 
-        if clear_file_hash:
-            node.node_hash = None
-        else:
+        if replace_file_hash:
             node.node_hash = hash_sha256(bytes(file.data, encoding='utf-8'))
+        else:
+            node.node_hash = real_node.node_hash
 
         return root_node
 

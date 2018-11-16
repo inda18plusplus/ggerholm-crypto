@@ -3,9 +3,9 @@ import ssl
 
 from nacl.encoding import HexEncoder
 from nacl.public import Box, PublicKey, PrivateKey
+from nacl.pwhash import scrypt
 from nacl.secret import SecretBox
 from nacl.signing import SigningKey, VerifyKey
-from nacl.utils import random
 
 from network.request import Request, request_to_json
 from network.socket_protocol import receive_message, ConnectionManager
@@ -18,13 +18,18 @@ def run_client(default_ssl_impl=True):
     client = Client(default_ssl_impl)
     client.start()
 
-    secret_box = SecretBox(random(SecretBox.KEY_SIZE))
+    salt = ''.join(['a' for _ in range(32)])
+    password = input('Enter a password: ')
+    key = scrypt.kdf(SecretBox.KEY_SIZE, bytes(password, encoding='utf-8'), bytes(salt, encoding='utf-8'))
+    secret_box = SecretBox(key)
     print('Ready to serve:')
     while client.connected:
         cmd = input('> ')
         tokens = cmd.split(' ')
         try:
-            if len(cmd) == 0 or tokens[0] == 'exit':
+            if len(cmd) == 0:
+                client.disconnect()
+            if tokens[0] == 'exit':
                 client.exit()
             elif tokens[0] == 'send':
                 fid = int(tokens[1])
@@ -131,8 +136,13 @@ class Client(ConnectionManager):
         request = Request('get_structure', file.file_id)
         request_json = request_to_json(request)
         self.send_bytes_secure(bytes(request_json, encoding='utf-8'))
+
         prev_structure = self.receive_bytes_secure()
-        expected_root_hash = get_root_hash(prev_structure, file)
+        prev_root_hash = get_root_hash(prev_structure, file, False)
+        if self._latest_top_hash and prev_root_hash != self._latest_top_hash:
+            print('Client: Structure incorrectly modified before write.')
+            return False
+        expected_root_hash = get_root_hash(prev_structure, file, True)
 
         file_json = file_to_json(file)
         request = Request('send_file', file_json)
@@ -143,11 +153,11 @@ class Client(ConnectionManager):
         if not hash_structure or hash_structure.decode('utf-8') == 'error':
             return False
 
-        received_root_hash = get_root_hash(hash_structure, file)
+        received_root_hash = get_root_hash(hash_structure, file, False)
         if received_root_hash == expected_root_hash:
             self._latest_top_hash = received_root_hash
         else:
-            print('Client: Received incorrectly modified structure.')
+            print('Client: Structure incorrectly modified after write.')
             self.disconnect()
             return False
 
@@ -174,7 +184,7 @@ class Client(ConnectionManager):
         if not hash_structure:
             return None
 
-        provided_root_hash = get_root_hash(hash_structure, file)
+        provided_root_hash = get_root_hash(hash_structure, file, True)
         if not self._latest_top_hash:
             self._latest_top_hash = provided_root_hash
         elif self._latest_top_hash != provided_root_hash:
